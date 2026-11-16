@@ -2,6 +2,11 @@
 
 What changed for users in each version of OpenView, newest first.
 
+## 0.2.1 — 16 November 2026
+
+- **The program no longer names folders of the computer it was built on.** Earlier builds
+  carried the full paths of their source files inside `OpenView.exe`. Nothing else changes.
+
 ## 0.2.0 — 13 November 2026
 
 OpenView is now based on the original OpenView by Daniel Castellanos: it has its look

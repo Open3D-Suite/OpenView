@@ -6,7 +6,7 @@ account. Part of the [Open3D](https://github.com/carlesllavata/Open3D) suite of 
 for 3D work, based on the original [OpenView](https://github.com/AdanCastellanos/OpenView) by Daniel
 Castellanos (see [Credits](#credits)).
 
-**Version 0.2.0** – based on the original OpenView: its interface, its logo and its methods.
+**Version 0.2.1** – based on the original OpenView: its interface, its logo and its methods.
 
 What it downloads:
 

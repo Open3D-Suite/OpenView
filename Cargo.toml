@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 [package]
 name = "openview"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 description = "Download 360 panoramas and photos from map applications at full resolution, with a viewer, crops and HDRI"
 license = "GPL-3.0-or-later"

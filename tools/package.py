@@ -7,7 +7,8 @@
 Writes dist/openview-<version>-windows-x64.zip (OpenView.exe, README.md, LICENSE, NOTICE,
 LICENSES/, CHANGELOG.md and THIRD-PARTY-LICENSES.txt) and dist/SHA256SUMS.txt. Refuses to build when the version in Cargo.toml
 is not the one the README and the changelog talk about, or when a library has a licence that
-cannot be distributed under GPL-3.0-or-later.
+cannot be distributed under GPL-3.0-or-later. The release build keeps the folders of the machine
+it runs on out of the program, and the program is checked for them before it is packed.
 
 Only the standard library is used, so any Python 3.9+ works.
 """
@@ -50,9 +51,9 @@ def cargo():
     fail("cargo was not found")
 
 
-def run(*args):
+def run(*args, env=None):
     print(">", " ".join(str(a) for a in args), flush=True)
-    result = subprocess.run([str(a) for a in args], cwd=ROOT)
+    result = subprocess.run([str(a) for a in args], cwd=ROOT, env=env)
     if result.returncode != 0:
         fail(f"{args[1]} failed")
 
@@ -138,16 +139,54 @@ def target_dir():
     return Path(json.loads(out.stdout)["target_directory"])
 
 
+def cargo_home():
+    return os.environ.get("CARGO_HOME") or str(Path(os.environ.get("USERPROFILE", "")) / ".cargo")
+
+
+def release_environment():
+    """The environment of the release build.
+
+    rustc writes the full path of every source file that can panic into the program, and for the
+    libraries that is the cargo home of whoever built it, inside their user folder. Those paths are
+    cut down to "cargo\\..." and "target\\...", so the published program says nothing of the machine
+    it was built on. They go in CARGO_ENCODED_RUSTFLAGS because such folders may have spaces in
+    their names.
+    """
+    flags = [f"--remap-path-prefix={cargo_home()}=cargo", f"--remap-path-prefix={target_dir()}=target"]
+    env = dict(os.environ)
+    if env.get("CARGO_ENCODED_RUSTFLAGS"):
+        flags = env["CARGO_ENCODED_RUSTFLAGS"].split("\x1f") + flags
+    elif env.get("RUSTFLAGS"):
+        flags = env.pop("RUSTFLAGS").split() + flags
+    env["CARGO_ENCODED_RUSTFLAGS"] = "\x1f".join(flags)
+    return env
+
+
+def check_no_local_paths(exe):
+    """Refuses a program that still names a folder of this machine."""
+    data = exe.read_bytes().lower()
+    # ROOT may be the \\server\share spelling of a mapped drive: look for both spellings.
+    here = Path(os.path.abspath(__file__)).parent.parent
+    folders = {os.environ.get("USERPROFILE", ""), cargo_home(), str(ROOT), str(here), str(target_dir())}
+    for folder in sorted(folders):
+        if len(folder) < 4:
+            continue
+        for encoding in ("utf-8", "utf-16-le"):
+            if folder.lower().encode(encoding) in data:
+                fail(f"{exe.name} still contains the path of a folder of this machine: {folder}")
+
+
 def main():
     ver = version()
     check_documents(ver)
     notices = third_party(ver)
     if "--no-test" not in sys.argv:
         run(cargo(), "test", "--locked")
-    run(cargo(), "build", "--release", "--locked")
+    run(cargo(), "build", "--release", "--locked", env=release_environment())
     exe = target_dir() / "release" / "OpenView.exe"
     if not exe.exists():
         fail(f"{exe} was not built")
+    check_no_local_paths(exe)
     said = subprocess.run([str(exe), "--version"], capture_output=True, text=True).stdout.strip()
     if said != f"OpenView {ver}":
         fail(f"the executable says '{said}', not 'OpenView {ver}'")
