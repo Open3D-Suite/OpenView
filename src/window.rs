@@ -91,10 +91,10 @@ pub fn run(open: Vec<String>) -> Result<(), String> {
         .with_visible(false);
     if let Some(place) = saved {
         builder = builder.with_inner_size(PhysicalSize::new(place.w.max(MIN_SIZE.0 as u32), place.h.max(MIN_SIZE.1 as u32)));
-        if let (Some(x), Some(y)) = (place.x, place.y) {
-            if on_a_monitor(x + (place.w.min(400) / 2) as i32, y + 20) {
-                builder = builder.with_position(PhysicalPosition::new(x, y));
-            }
+        if let (Some(x), Some(y)) = (place.x, place.y)
+            && on_a_monitor(x + (place.w.min(400) / 2) as i32, y + 20)
+        {
+            builder = builder.with_position(PhysicalPosition::new(x, y));
         }
         builder = builder.with_maximized(place.max);
     }

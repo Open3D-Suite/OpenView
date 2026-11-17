@@ -302,10 +302,8 @@ impl Client {
             }
         }
         // The search does not say where the place is; the description does.
-        if !described {
-            if let Ok(info) = self.metadata(&found.id, found.kind) {
-                found = info;
-            }
+        if !described && let Ok(info) = self.metadata(&found.id, found.kind) {
+            found = info;
         }
         Ok(found)
     }

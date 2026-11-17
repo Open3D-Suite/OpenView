@@ -554,10 +554,10 @@ impl Server {
     /// The sharper picture for the viewer (4096 pixels wide), fetched once per panorama.
     fn view_texture(&self, id: &str) -> Option<Arc<Vec<u8>>> {
         let info = self.shared.state.lock().unwrap().items.get(id)?.info.clone()?;
-        if let Some((pano_id, bytes)) = self.shared.state.lock().unwrap().views.get(id) {
-            if *pano_id == info.id {
-                return Some(bytes.clone());
-            }
+        if let Some((pano_id, bytes)) = self.shared.state.lock().unwrap().views.get(id)
+            && *pano_id == info.id
+        {
+            return Some(bytes.clone());
         }
         let never = AtomicBool::new(false);
         let bytes = Arc::new(pano::thumbnail(self.client(), &info, 4096, &never).ok()?);
@@ -577,11 +577,11 @@ impl Server {
     /// The whole panorama, untouched; the last one is kept for several crops.
     fn full_image(&self, info: &PanoInfo, control: &Control) -> Result<Arc<RgbImage>, pano::Error> {
         let mut cache = self.shared.full.lock().unwrap();
-        if let Some((id, image)) = cache.as_ref() {
-            if *id == info.id {
-                (control.progress)(Step::Tiles(1, 1));
-                return Ok(image.clone());
-            }
+        if let Some((id, image)) = cache.as_ref()
+            && *id == info.id
+        {
+            (control.progress)(Step::Tiles(1, 1));
+            return Ok(image.clone());
         }
         // Free the previous one before fetching another.
         *cache = None;
@@ -741,10 +741,10 @@ impl Server {
         let header = |name: &str| {
             request.headers().iter().find(|h| h.field.as_str().as_str().eq_ignore_ascii_case(name)).map(|h| h.value.as_str().to_string())
         };
-        if let Some(origin) = header("Origin") {
-            if origin != format!("http://{}", header("Host").unwrap_or_default()) {
-                return false;
-            }
+        if let Some(origin) = header("Origin")
+            && origin != format!("http://{}", header("Host").unwrap_or_default())
+        {
+            return false;
         }
         same_secret(&header("X-Token").unwrap_or_default(), &self.shared.token)
     }
@@ -913,10 +913,10 @@ impl Server {
             }
             "/api/hdri/cancel" => {
                 let sid = data["sid"].as_str().unwrap_or("");
-                if let Some(job) = self.shared.state.lock().unwrap().hdri.get(sid) {
-                    if job.status == JobStatus::Working {
-                        job.cancel.store(true, Ordering::Relaxed);
-                    }
+                if let Some(job) = self.shared.state.lock().unwrap().hdri.get(sid)
+                    && job.status == JobStatus::Working
+                {
+                    job.cancel.store(true, Ordering::Relaxed);
                 }
                 ok()
             }
@@ -1052,10 +1052,10 @@ impl Server {
             _ => state.items.get(id).and_then(|i| i.path.clone()).map(|p| (p, what != "file")),
         };
         drop(state);
-        if let Some((path, select)) = target {
-            if path.exists() {
-                reveal(&path, select);
-            }
+        if let Some((path, select)) = target
+            && path.exists()
+        {
+            reveal(&path, select);
         }
     }
 }

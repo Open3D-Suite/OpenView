@@ -548,24 +548,25 @@ pub fn download(client: &Client, info: &PanoInfo, link: &str, options: &Options,
     }
     // Levelling and the ground patch only make sense on a whole sphere.
     let spherical = !extras::is_partial(image.width(), image.height());
-    if options.level && spherical {
-        if let Some(matrix) = level_of(info) {
-            (control.progress)(Step::Levelling);
-            image = geom::reproject(&image, &matrix);
-            touches.levelled = true;
-            control.check()?;
-        }
+    if options.level
+        && spherical
+        && let Some(matrix) = level_of(info)
+    {
+        (control.progress)(Step::Levelling);
+        image = geom::reproject(&image, &matrix);
+        touches.levelled = true;
+        control.check()?;
     }
     if options.cover_ground && spherical {
         (control.progress)(Step::CoveringGround);
         extras::patch_nadir(&mut image, extras::NADIR_ANGLE_DEG);
         touches.ground_covered = true;
     }
-    if options.north {
-        if let Some(heading) = info.heading {
-            image = extras::face_north(&image, heading);
-            touches.north = true;
-        }
+    if options.north
+        && let Some(heading) = info.heading
+    {
+        image = extras::face_north(&image, heading);
+        touches.north = true;
     }
     if touches != Touches::default() {
         raw = None;
