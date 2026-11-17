@@ -4,6 +4,8 @@
 
 /// Connects the output to the terminal the app was started from, if there is one.
 #[cfg(windows)]
+// `unsafe` is allowed in this function: it calls Windows to attach to that terminal.
+#[allow(unsafe_code)]
 fn attach_console() {
     #[link(name = "kernel32")]
     unsafe extern "system" {

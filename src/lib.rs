@@ -13,8 +13,14 @@ pub mod links;
 pub mod pano;
 pub mod service;
 pub mod settings;
+// `unsafe` is allowed in this module: it calls Windows to ask for the language of the user interface.
+#[allow(unsafe_code)]
 pub mod text;
+// `unsafe` is allowed in this module: it gives the file dialogs the app's window as a raw Windows handle.
+#[allow(unsafe_code)]
 pub mod web;
+// `unsafe` is allowed in this module: it calls Windows to look for a monitor and to show a message box.
+#[allow(unsafe_code)]
 pub mod window;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
