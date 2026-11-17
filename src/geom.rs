@@ -287,7 +287,7 @@ pub fn vertical_deviation(image: &RgbImage) -> f64 {
     let height = (width as u64 * image.height() as u64 / image.width().max(1) as u64) as u32;
     let small = image::imageops::resize(image, width, height.max(8), image::imageops::FilterType::Triangle);
     let (w, h) = (small.width() as usize, small.height() as usize);
-    let grey: Vec<f32> = small.as_raw().chunks_exact(3).map(|p| 0.299 * p[0] as f32 + 0.587 * p[1] as f32 + 0.114 * p[2] as f32).collect();
+    let grey: Vec<f32> = small.as_raw().as_chunks::<3>().0.iter().map(|p| 0.299 * p[0] as f32 + 0.587 * p[1] as f32 + 0.114 * p[2] as f32).collect();
     let at = |x: usize, y: usize| grey[y * w + x % w];
     // Rows within 25 degrees of the horizon.
     let (first, last) = ((h as f64 * (65.0 / 180.0)) as usize, (h as f64 * (115.0 / 180.0)) as usize);

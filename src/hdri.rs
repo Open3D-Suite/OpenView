@@ -240,7 +240,9 @@ pub fn detect_sun(small: &RgbImage) -> Option<(f32, f32, f32)> {
     let table = srgb_to_linear_table();
     let rows = h / 2;
     let lum: Vec<f32> = small.as_raw()[..rows * w * 3]
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|p| luminance([table[p[0] as usize], table[p[1] as usize], table[p[2] as usize]]))
         .collect();
     let peak = lum.iter().copied().fold(0f32, f32::max);
@@ -854,7 +856,7 @@ mod tests {
         while i < packed.len() {
             let count = packed[i] as usize;
             if count > 128 {
-                unpacked.extend(std::iter::repeat(packed[i + 1]).take(count - 128));
+                unpacked.extend(std::iter::repeat_n(packed[i + 1], count - 128));
                 i += 2;
             } else {
                 assert!(count > 0);

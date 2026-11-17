@@ -102,7 +102,7 @@ pub fn percent_decode(text: &str) -> String {
 
 fn host_of(url: &str) -> Option<&str> {
     let rest = url.split_once("://")?.1;
-    let end = rest.find(|c| c == '/' || c == '?' || c == '#').unwrap_or(rest.len());
+    let end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
     let host = &rest[..end];
     Some(host.rsplit_once('@').map_or(host, |(_, h)| h))
 }
@@ -136,7 +136,7 @@ fn parse_lat_lon(text: &str) -> Option<(f64, f64)> {
 fn image_ref(url: &str) -> Option<(String, u64)> {
     let start = url.find("data=")?;
     let data = &url[start + 5..];
-    let data = data.split(|c| c == '?' || c == '&' || c == '#').next().unwrap_or(data);
+    let data = data.split(['?', '&', '#']).next().unwrap_or(data);
     let tokens: Vec<&str> = data.split('!').filter(|t| !t.is_empty()).collect();
     for (i, token) in tokens.iter().enumerate() {
         let Some(id) = token.strip_prefix("1s") else { continue };
@@ -226,7 +226,7 @@ pub fn parse(link: &str) -> Result<Target, LinkError> {
     }
     if let Some(at) = link.find("/@") {
         let rest = &link[at + 2..];
-        let end = rest.find(|c| c == '/' || c == '?').unwrap_or(rest.len());
+        let end = rest.find(['/', '?']).unwrap_or(rest.len());
         if let Some((lat, lon)) = parse_lat_lon(&rest[..end]) {
             return Ok(Target::Near { lat, lon });
         }

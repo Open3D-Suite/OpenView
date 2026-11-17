@@ -473,7 +473,7 @@ pub fn parse_pano(pano: &Value) -> Option<PanoInfo> {
             }
         }
     }
-    history.sort_by(|a, b| (b.year, b.month).cmp(&(a.year, a.month)));
+    history.sort_by_key(|a| std::cmp::Reverse((a.year, a.month)));
 
     let address =
         at(pano, &[3, 2]).as_array().map(|parts| parts.iter().filter_map(|part| part.get(0).and_then(Value::as_str)).collect::<Vec<_>>().join(" / "));

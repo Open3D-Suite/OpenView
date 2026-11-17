@@ -602,7 +602,7 @@ fn download_photo(client: &Client, info: &PanoInfo, link: &str, options: &Option
     for url in urls {
         match fetch(client, &url, 2, control.cancel).and_then(|bytes| Ok((decode(&bytes)?, bytes))) {
             Ok((image, bytes)) => {
-                let larger = best.as_ref().map_or(true, |(b, _)| image.width() * image.height() > b.width() * b.height());
+                let larger = best.as_ref().is_none_or(|(b, _)| image.width() * image.height() > b.width() * b.height());
                 let enough = w > 0 && image.width() as f64 >= w as f64 * 0.98 && image.height() as f64 >= h as f64 * 0.98;
                 if larger {
                     best = Some((image, bytes));
