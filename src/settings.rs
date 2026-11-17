@@ -143,10 +143,12 @@ mod tests {
 
     #[test]
     fn settings_survive_a_round_trip() {
-        let mut settings = Settings::default();
-        settings.fmt = Format::Tif;
-        settings.north = true;
-        settings.window = Some(WindowPlace { w: 900, h: 700, x: Some(10), y: None, max: false });
+        let settings = Settings {
+            fmt: Format::Tif,
+            north: true,
+            window: Some(WindowPlace { w: 900, h: 700, x: Some(10), y: None, max: false }),
+            ..Default::default()
+        };
         let text = serde_json::to_string(&settings).unwrap();
         assert!(text.contains(r#""fmt":"tif""#), "{text}");
         assert_eq!(serde_json::from_str::<Settings>(&text).unwrap(), settings);
@@ -177,9 +179,7 @@ mod tests {
 
     #[test]
     fn options_follow_the_settings() {
-        let mut settings = Settings::default();
-        settings.nadir = true;
-        settings.level = false;
+        let settings = Settings { nadir: true, level: false, ..Default::default() };
         let options = settings.options();
         assert!(options.cover_ground && !options.level && options.max_width.is_none());
     }
