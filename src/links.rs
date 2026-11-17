@@ -23,11 +23,7 @@ impl Kind {
     }
 
     pub fn from_code(code: u64) -> Kind {
-        if code == 2 || code == 0 {
-            Kind::Official
-        } else {
-            Kind::User
-        }
+        if code == 2 || code == 0 { Kind::Official } else { Kind::User }
     }
 }
 
@@ -54,10 +50,9 @@ impl std::fmt::Display for LinkError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             LinkError::Empty => write!(f, "the link is empty"),
-            LinkError::NotRecognised => write!(
-                f,
-                "this is not a link to a panorama or a photo: open it in the map application and copy the address from the browser"
-            ),
+            LinkError::NotRecognised => {
+                write!(f, "this is not a link to a panorama or a photo: open it in the map application and copy the address from the browser")
+            }
         }
     }
 }
@@ -113,18 +108,12 @@ fn host_of(url: &str) -> Option<&str> {
 }
 
 fn looks_like_id(text: &str) -> bool {
-    text.len() >= 16
-        && text.len() <= 160
-        && text.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    text.len() >= 16 && text.len() <= 160 && text.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
 }
 
 /// Identifiers of user uploads have recognisable beginnings; street-level ones are 22 characters.
 fn kind_of_bare_id(id: &str) -> Kind {
-    if id.starts_with("AF1Qip") || id.starts_with("CIHM0og") || id.starts_with("CAoS") || id.len() != 22 {
-        Kind::User
-    } else {
-        Kind::Official
-    }
+    if id.starts_with("AF1Qip") || id.starts_with("CIHM0og") || id.starts_with("CAoS") || id.len() != 22 { Kind::User } else { Kind::Official }
 }
 
 fn query_value<'a>(url: &'a str, key: &str) -> Option<&'a str> {
@@ -151,8 +140,7 @@ fn image_ref(url: &str) -> Option<(String, u64)> {
     let tokens: Vec<&str> = data.split('!').filter(|t| !t.is_empty()).collect();
     for (i, token) in tokens.iter().enumerate() {
         let Some(id) = token.strip_prefix("1s") else { continue };
-        let Some(kind_code) = tokens.get(i + 1).and_then(|t| t.strip_prefix("2e")).and_then(|v| v.parse().ok())
-        else {
+        let Some(kind_code) = tokens.get(i + 1).and_then(|t| t.strip_prefix("2e")).and_then(|v| v.parse().ok()) else {
             continue;
         };
         let id = percent_decode(id);
@@ -253,38 +241,26 @@ mod tests {
     #[test]
     fn street_view_link_gives_an_official_panorama() {
         let link = "https://www.google.com/maps/@40.4167338,-3.7033315,3a,75y,271.04h,90t/data=!3m7!1e1!3m5!1sAAAAAAAAAAAAAAAAAAAAAA!2e0!6shttps:%2F%2Fstreetviewpixels-pa.googleapis.com%2Fv1%2Fthumbnail%3Fpanoid%3DAAAAAAAAAAAAAAAAAAAAAA!7i16384!8i8192?entry=ttu";
-        assert_eq!(
-            parse(link),
-            Ok(Target::Pano { id: "AAAAAAAAAAAAAAAAAAAAAA".into(), kind: Kind::Official })
-        );
+        assert_eq!(parse(link), Ok(Target::Pano { id: "AAAAAAAAAAAAAAAAAAAAAA".into(), kind: Kind::Official }));
     }
 
     #[test]
     fn user_sphere_link_gives_a_user_panorama() {
         let link = "https://www.google.com/maps/@40.41,-3.70,3a,75y,90t/data=!3m8!1e1!3m6!1sCIHM0ogKEICAgIAAAAAAAA!2e10!3e11!6shttps:%2F%2Flh3.googleusercontent.com%2Fgpms-cs-s%2FXYZ%3Dw900-h600-k-no-pi0-ya0-ro0-fo100!7i3840!8i1920";
-        assert_eq!(
-            parse(link),
-            Ok(Target::Pano { id: "CIHM0ogKEICAgIAAAAAAAA".into(), kind: Kind::User })
-        );
+        assert_eq!(parse(link), Ok(Target::Pano { id: "CIHM0ogKEICAgIAAAAAAAA".into(), kind: Kind::User }));
     }
 
     #[test]
     fn place_link_skips_the_feature_id_and_finds_the_photo() {
         let link = "https://www.google.com/maps/place/Somewhere/@40.41,-3.70,3a,75y,90t/data=!3m8!1e2!3m6!1sAF1QipAAAAAAAAAAAAAAAAAAAA!2e10!3e12!6shttps:%2F%2Flh3.googleusercontent.com%2Fp%2FAF1QipAAAAAAAAAAAAAAAAAAAA%3Dw203-h152-k-no!7i4032!8i3024!4m7!3m6!1s0xd42287d6da3df33:0x4a1c1d1e1f1a1b1c!8m2!3d40.41!4d-3.70";
         assert_eq!(parse(link), Ok(Target::Pano { id: "AF1QipAAAAAAAAAAAAAAAAAAAA".into(), kind: Kind::User }));
-        assert_eq!(
-            image_address(link).as_deref(),
-            Some("https://lh3.googleusercontent.com/p/AF1QipAAAAAAAAAAAAAAAAAAAA")
-        );
+        assert_eq!(image_address(link).as_deref(), Some("https://lh3.googleusercontent.com/p/AF1QipAAAAAAAAAAAAAAAAAAAA"));
         assert_eq!(image_address("https://www.google.com/maps/@1,2,3a/data=!3m4!1e1!3m2!1sAAAAAAAAAAAAAAAAAAAAAA!2e0"), None);
     }
 
     #[test]
     fn coordinates_only_ask_for_the_nearest_panorama() {
-        assert_eq!(
-            parse("https://www.google.com/maps/@40.416729,-3.703339,17z"),
-            Ok(Target::Near { lat: 40.416729, lon: -3.703339 })
-        );
+        assert_eq!(parse("https://www.google.com/maps/@40.416729,-3.703339,17z"), Ok(Target::Near { lat: 40.416729, lon: -3.703339 }));
         assert_eq!(parse("40.416729, -3.703339"), Ok(Target::Near { lat: 40.416729, lon: -3.703339 }));
         assert_eq!(
             parse("https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=48.857832,2.295226"),
@@ -294,18 +270,12 @@ mod tests {
 
     #[test]
     fn short_links_are_left_to_be_followed() {
-        assert_eq!(
-            parse("https://maps.app.goo.gl/abcDEF123"),
-            Ok(Target::Short("https://maps.app.goo.gl/abcDEF123".into()))
-        );
+        assert_eq!(parse("https://maps.app.goo.gl/abcDEF123"), Ok(Target::Short("https://maps.app.goo.gl/abcDEF123".into())));
     }
 
     #[test]
     fn bare_identifiers_and_query_parameters_work() {
-        assert_eq!(
-            parse("AAAAAAAAAAAAAAAAAAAAAA"),
-            Ok(Target::Pano { id: "AAAAAAAAAAAAAAAAAAAAAA".into(), kind: Kind::Official })
-        );
+        assert_eq!(parse("AAAAAAAAAAAAAAAAAAAAAA"), Ok(Target::Pano { id: "AAAAAAAAAAAAAAAAAAAAAA".into(), kind: Kind::Official }));
         assert_eq!(
             parse("https://www.google.com/maps/@?api=1&map_action=pano&pano=AAAAAAAAAAAAAAAAAAAAAA"),
             Ok(Target::Pano { id: "AAAAAAAAAAAAAAAAAAAAAA".into(), kind: Kind::Official })

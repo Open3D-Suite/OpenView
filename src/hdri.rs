@@ -84,10 +84,7 @@ impl Params {
             sun_size: finite(self.sun_size, d.sun_size).clamp(0.3, 5.0),
             highlights: finite(self.highlights, d.highlights).clamp(1.0, 10.0),
             exposure: finite(self.exposure, d.exposure).clamp(-5.0, 5.0),
-            sun_pos: self
-                .sun_pos
-                .filter(|(u, v)| u.is_finite() && v.is_finite())
-                .map(|(u, v)| (u.clamp(0.0, 1.0), v.clamp(0.0, 1.0))),
+            sun_pos: self.sun_pos.filter(|(u, v)| u.is_finite() && v.is_finite()).map(|(u, v)| (u.clamp(0.0, 1.0), v.clamp(0.0, 1.0))),
         }
     }
 }
@@ -135,10 +132,7 @@ fn check_size(w: u32, h: u32) -> Result<(), Error> {
 
 /// The size of a panorama on disk, without decoding it.
 pub fn dimensions(path: &Path) -> Result<(u32, u32), Error> {
-    let (w, h) = image::ImageReader::open(path)?
-        .with_guessed_format()?
-        .into_dimensions()
-        .map_err(|e| Error::Image(e.to_string()))?;
+    let (w, h) = image::ImageReader::open(path)?.with_guessed_format()?.into_dimensions().map_err(|e| Error::Image(e.to_string()))?;
     check_size(w, h)?;
     Ok((w, h))
 }
@@ -509,10 +503,7 @@ pub fn write(
         resized = image::imageops::resize(&source.rgb, w, h, filter);
         &resized
     };
-    let alpha = source
-        .alpha
-        .as_ref()
-        .map(|a| if a.dimensions() == (w, h) { a.clone() } else { image::imageops::resize(a, w, h, filter) });
+    let alpha = source.alpha.as_ref().map(|a| if a.dimensions() == (w, h) { a.clone() } else { image::imageops::resize(a, w, h, filter) });
     if cancel.load(Ordering::Relaxed) {
         return Err(Error::Cancelled);
     }
@@ -651,13 +642,7 @@ fn rle(values: &[u8], out: &mut Vec<u8>) {
     }
 }
 
-fn write_radiance(
-    model: &Model,
-    rgb: &RgbImage,
-    path: &Path,
-    cancel: &AtomicBool,
-    progress: &(dyn Fn(f32) + Sync),
-) -> Result<(), Error> {
+fn write_radiance(model: &Model, rgb: &RgbImage, path: &Path, cancel: &AtomicBool, progress: &(dyn Fn(f32) + Sync)) -> Result<(), Error> {
     let (w, h) = (rgb.width() as usize, rgb.height() as usize);
     let directions = Directions::new(rgb.width(), rgb.height());
     let data = rgb.as_raw();

@@ -80,11 +80,7 @@ impl EdgeRow {
         let end = start + radius * 2 + 1;
         let mut out = [0f32; 3];
         for k in 0..3 {
-            let sum = if end <= w {
-                self.sums[end][k] - self.sums[start][k]
-            } else {
-                (total[k] - self.sums[start][k]) + self.sums[end - w][k]
-            };
+            let sum = if end <= w { self.sums[end][k] - self.sums[start][k] } else { (total[k] - self.sums[start][k]) + self.sums[end - w][k] };
             out[k] = (sum / span) as f32;
         }
         out
@@ -246,13 +242,7 @@ mod tests {
     #[test]
     fn partial_photo_is_centred_and_filled() {
         // 400 wide, only 100 tall: the full sphere is 200 tall.
-        let partial = RgbImage::from_fn(400, 100, |x, y| {
-            if y < 50 {
-                Rgb([100, 150, 250])
-            } else {
-                Rgb([(60 + x % 30) as u8, 90, 40])
-            }
-        });
+        let partial = RgbImage::from_fn(400, 100, |x, y| if y < 50 { Rgb([100, 150, 250]) } else { Rgb([(60 + x % 30) as u8, 90, 40]) });
         let full = complete_sphere(&partial).expect("completed");
         assert_eq!(full.dimensions(), (400, 200));
         // The picture itself is untouched, in the middle.

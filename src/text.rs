@@ -40,11 +40,7 @@ impl Lang {
         // SAFETY: a Win32 call without arguments that returns a language identifier.
         let id = unsafe { GetUserDefaultUILanguage() };
         // The low ten bits are the primary language; 0x0A is Spanish.
-        if id & 0x3ff == 0x0a {
-            Lang::Es
-        } else {
-            Lang::En
-        }
+        if id & 0x3ff == 0x0a { Lang::Es } else { Lang::En }
     }
 
     #[cfg(not(windows))]
@@ -97,9 +93,7 @@ impl Lang {
             Msg::Saved => self.pick("Saved", "Guardado"),
             Msg::CropGone => self.pick("The panorama is no longer in the list.", "El panorama ya no está en la lista."),
             Msg::CropNotReady => self.pick("This panorama is not ready yet.", "Este panorama aún no está listo."),
-            Msg::CropNotForPhotos => {
-                self.pick("Crops are for 360 panoramas, not for photos.", "Los recortes son para panoramas 360, no para fotos.")
-            }
+            Msg::CropNotForPhotos => self.pick("Crops are for 360 panoramas, not for photos.", "Los recortes son para panoramas 360, no para fotos."),
             Msg::HdriNoFile => self.pick("The file was not found.", "No encuentro el archivo."),
             Msg::HdriTooSmall => self.pick("The image is too small.", "La imagen es demasiado pequeña."),
             Msg::HdriCancelled => self.pick("Conversion cancelled.", "Conversión cancelada."),
@@ -121,9 +115,7 @@ impl Lang {
             (Lang::En, true) => {
                 format!("{count} downloads have not finished. If you close now they will be cancelled. Close anyway?")
             }
-            (Lang::Es, false) => {
-                "Hay 1 descarga sin terminar. Si cierras ahora se cancelará. ¿Cerrar de todas formas?".into()
-            }
+            (Lang::Es, false) => "Hay 1 descarga sin terminar. Si cierras ahora se cancelará. ¿Cerrar de todas formas?".into(),
             (Lang::Es, true) => {
                 format!("Hay {count} descargas sin terminar. Si cierras ahora se cancelarán. ¿Cerrar de todas formas?")
             }

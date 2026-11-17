@@ -11,7 +11,7 @@
 use std::io::Read;
 use std::time::Duration;
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use crate::links::{self, Kind, Target};
 
@@ -145,11 +145,7 @@ impl PanoInfo {
     pub fn map_link(&self) -> String {
         let (lat, lon) = (self.lat.unwrap_or(0.0), self.lon.unwrap_or(0.0));
         let code = if self.kind == Kind::Official { 0 } else { 10 };
-        format!(
-            "https://www.google.com/maps/@{lat},{lon},3a,75y,{:.2}h,90t/data=!3m4!1e1!3m2!1s{}!2e{code}",
-            self.heading.unwrap_or(0.0),
-            self.id
-        )
+        format!("https://www.google.com/maps/@{lat},{lon},3a,75y,{:.2}h,90t/data=!3m4!1e1!3m2!1s{}!2e{code}", self.heading.unwrap_or(0.0), self.id)
     }
 
     /// Addresses to try, best first, for the whole image at `width` x `height` (a user's 360 photo
@@ -198,15 +194,9 @@ impl Client {
     fn get_raw(&self, url: &str) -> Result<(u16, Option<String>, Vec<u8>), Error> {
         let mut response = self.agent.get(url).header("Referer", "https://www.google.com/").call().map_err(net)?;
         let status = response.status().as_u16();
-        let location =
-            response.headers().get("location").and_then(|v| v.to_str().ok()).map(|v| v.to_string());
+        let location = response.headers().get("location").and_then(|v| v.to_str().ok()).map(|v| v.to_string());
         let mut body = Vec::new();
-        response
-            .body_mut()
-            .as_reader()
-            .take(MAX_BODY)
-            .read_to_end(&mut body)
-            .map_err(|_| Error::Network(Net::Offline))?;
+        response.body_mut().as_reader().take(MAX_BODY).read_to_end(&mut body).map_err(|_| Error::Network(Net::Offline))?;
         Ok((status, location, body))
     }
 
@@ -260,12 +250,7 @@ impl Client {
             .map_err(net)?;
         let status = response.status().as_u16();
         let mut text = String::new();
-        response
-            .body_mut()
-            .as_reader()
-            .take(MAX_BODY)
-            .read_to_string(&mut text)
-            .map_err(|_| Error::Network(Net::Offline))?;
+        response.body_mut().as_reader().take(MAX_BODY).read_to_string(&mut text).map_err(|_| Error::Network(Net::Offline))?;
         if status != 200 {
             return Err(Error::Network(Net::Status(status)));
         }
@@ -283,8 +268,7 @@ impl Client {
         // The answer starts with a line that is not JSON.
         let text = String::from_utf8_lossy(&body);
         let json_start = text.find('\n').map_or(0, |i| i + 1);
-        let answer: Value =
-            serde_json::from_str(&text[json_start..]).map_err(|e| Error::Unexpected(e.to_string()))?;
+        let answer: Value = serde_json::from_str(&text[json_start..]).map_err(|e| Error::Unexpected(e.to_string()))?;
         if !matches!(at(&answer, &[1, 0, 0, 0]).as_u64(), Some(1 | 3)) {
             return Err(Error::NotFound);
         }
@@ -380,9 +364,7 @@ impl Client {
 /// Where a tile lives.
 pub fn tile_url(id: &str, kind: Kind, zoom: usize, x: u32, y: u32) -> String {
     match kind {
-        Kind::Official => format!(
-            "https://streetviewpixels-pa.googleapis.com/v1/tile?cb_client=maps_sv.tactile&panoid={id}&x={x}&y={y}&zoom={zoom}"
-        ),
+        Kind::Official => format!("https://streetviewpixels-pa.googleapis.com/v1/tile?cb_client=maps_sv.tactile&panoid={id}&x={x}&y={y}&zoom={zoom}"),
         Kind::User => format!("https://lh3.ggpht.com/jsapi2/a/b/c/x{x}-y{y}-z{zoom}/{id}"),
     }
 }
@@ -467,18 +449,17 @@ pub fn parse_pano(pano: &Value) -> Option<PanoInfo> {
         if sizes.is_empty() {
             return None;
         }
-        let tile = (
-            at(pano, &[2, 3, 1, 0]).as_u64().unwrap_or(512) as u32,
-            at(pano, &[2, 3, 1, 1]).as_u64().unwrap_or(512) as u32,
-        );
+        let tile = (at(pano, &[2, 3, 1, 0]).as_u64().unwrap_or(512) as u32, at(pano, &[2, 3, 1, 1]).as_u64().unwrap_or(512) as u32);
         (sizes, tile)
     };
     let place = at(pano, &[5, 0]);
     let pose = at(place, &[1]);
     let date = at(pano, &[6, 7]);
-    let date = date.get(0).and_then(Value::as_i64).zip(date.get(1).and_then(Value::as_u64)).map(|(y, m)| {
-        (y as i32, m as u32, date.get(2).and_then(Value::as_u64).map(|d| d as u32))
-    });
+    let date = date
+        .get(0)
+        .and_then(Value::as_i64)
+        .zip(date.get(1).and_then(Value::as_u64))
+        .map(|(y, m)| (y as i32, m as u32, date.get(2).and_then(Value::as_u64).map(|d| d as u32)));
 
     let mut history = Vec::new();
     let others = at(place, &[3, 0]);
@@ -496,9 +477,8 @@ pub fn parse_pano(pano: &Value) -> Option<PanoInfo> {
     }
     history.sort_by(|a, b| (b.year, b.month).cmp(&(a.year, a.month)));
 
-    let address = at(pano, &[3, 2]).as_array().map(|parts| {
-        parts.iter().filter_map(|part| part.get(0).and_then(Value::as_str)).collect::<Vec<_>>().join(" / ")
-    });
+    let address =
+        at(pano, &[3, 2]).as_array().map(|parts| parts.iter().filter_map(|part| part.get(0).and_then(Value::as_str)).collect::<Vec<_>>().join(" / "));
 
     Some(PanoInfo {
         id,
@@ -529,9 +509,18 @@ mod tests {
         json!([
             [1],
             [2, "AAAAAAAAAAAAAAAAAAAAAA"],
-            [2, 2, [8192, 16384],
+            [
+                2,
+                2,
+                [8192, 16384],
                 [[[[256, 512]], [[512, 1024]], [[1024, 2048]], [[2048, 4096]], [[4096, 8192]], [[8192, 16384]]], [512, 512]],
-                null, null, null, null, null, "AAAAAAAAAAAAAAAAAAAAAA"],
+                null,
+                null,
+                null,
+                null,
+                null,
+                "AAAAAAAAAAAAAAAAAAAAAA"
+            ],
             [null, null, [["Example Square", "en"], ["Sampleton, Exampleshire", "en"]]],
             [[[["(c) Example Maps"]]], [[["Ann Example"], "//example.invalid/contrib/1"]]],
             [[
@@ -544,7 +533,10 @@ mod tests {
                     [[2, "CCCCCCCCCCCCCCCCCCCCCC"], null, []],
                     [[10, "CIHM0ogKEICAgIDDDDDDDD"], null, []]
                 ]],
-                null, null, null, null,
+                null,
+                null,
+                null,
+                null,
                 [[1, [2016, 5]], [2, [2022, 11]], [3, [2019, 8]], [9, [2001, 1]]]
             ]],
             [3, 4, 1, [1], null, [null, null, "scout", [6]], null, [2024, 6]]
@@ -624,10 +616,7 @@ mod tests {
         assert_eq!(info.date_text(), "2024-04-24");
         assert_eq!(info.author.as_deref(), Some("Bob Example"));
         assert_eq!((info.tilt, info.address.as_deref()), (None, None));
-        assert_eq!(
-            info.whole_image_urls(900, 964)[0],
-            "https://lh3.ggpht.com/jsapi2/a/b/c/w900-h964/CIHM0ogKEICAgIFFFFFFFF"
-        );
+        assert_eq!(info.whole_image_urls(900, 964)[0], "https://lh3.ggpht.com/jsapi2/a/b/c/w900-h964/CIHM0ogKEICAgIFFFFFFFF");
     }
 
     #[test]

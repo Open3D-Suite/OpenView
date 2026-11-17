@@ -9,8 +9,8 @@
 use std::fs;
 use std::io::BufWriter;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use image::codecs::jpeg::JpegEncoder;
@@ -168,11 +168,7 @@ pub struct Control<'a> {
 
 impl Control<'_> {
     pub fn check(&self) -> Result<(), Error> {
-        if self.cancel.load(Ordering::Relaxed) {
-            Err(Error::Cancelled)
-        } else {
-            Ok(())
-        }
+        if self.cancel.load(Ordering::Relaxed) { Err(Error::Cancelled) } else { Ok(()) }
     }
 }
 
@@ -240,36 +236,38 @@ pub fn fetch_tiles(client: &Client, info: &PanoInfo, zoom: usize, control: &Cont
 
     std::thread::scope(|scope| {
         for _ in 0..WORKERS.min(total) {
-            scope.spawn(|| loop {
-                let index = next.fetch_add(1, Ordering::Relaxed);
-                if index >= total || stop.load(Ordering::Relaxed) || control.cancel.load(Ordering::Relaxed) {
-                    return;
-                }
-                let (x, y) = (index as u32 % cols, index as u32 / cols);
-                let url = service::tile_url(&info.id, info.kind, zoom, x, y);
-                match fetch(client, &url, TRIES, control.cancel).and_then(|bytes| decode(&bytes)) {
-                    Ok(tile) => {
-                        let (need_w, need_h) = (tw.min(w - x * tw), th.min(h - y * th));
-                        let tile = if tile.width() >= need_w && tile.height() >= need_h {
-                            tile
-                        } else {
-                            // Some tiles arrive at a lower resolution than announced: never leave gaps.
-                            image::imageops::resize(&tile, tw, th, image::imageops::FilterType::Lanczos3)
-                        };
-                        blit(&mut canvas.lock().unwrap(), &tile, x * tw, y * th);
-                    }
-                    // The service has no tile here: the picture does not reach this far.
-                    Err(Error::Service(service::Error::NotFound)) => {
-                        missing.fetch_add(1, Ordering::Relaxed);
-                    }
-                    Err(e) => {
-                        stop.store(true, Ordering::Relaxed);
-                        failure.lock().unwrap().get_or_insert(e);
+            scope.spawn(|| {
+                loop {
+                    let index = next.fetch_add(1, Ordering::Relaxed);
+                    if index >= total || stop.load(Ordering::Relaxed) || control.cancel.load(Ordering::Relaxed) {
                         return;
                     }
+                    let (x, y) = (index as u32 % cols, index as u32 / cols);
+                    let url = service::tile_url(&info.id, info.kind, zoom, x, y);
+                    match fetch(client, &url, TRIES, control.cancel).and_then(|bytes| decode(&bytes)) {
+                        Ok(tile) => {
+                            let (need_w, need_h) = (tw.min(w - x * tw), th.min(h - y * th));
+                            let tile = if tile.width() >= need_w && tile.height() >= need_h {
+                                tile
+                            } else {
+                                // Some tiles arrive at a lower resolution than announced: never leave gaps.
+                                image::imageops::resize(&tile, tw, th, image::imageops::FilterType::Lanczos3)
+                            };
+                            blit(&mut canvas.lock().unwrap(), &tile, x * tw, y * th);
+                        }
+                        // The service has no tile here: the picture does not reach this far.
+                        Err(Error::Service(service::Error::NotFound)) => {
+                            missing.fetch_add(1, Ordering::Relaxed);
+                        }
+                        Err(e) => {
+                            stop.store(true, Ordering::Relaxed);
+                            failure.lock().unwrap().get_or_insert(e);
+                            return;
+                        }
+                    }
+                    let finished = done.fetch_add(1, Ordering::Relaxed) + 1;
+                    (control.progress)(Step::Tiles(finished, total));
                 }
-                let finished = done.fetch_add(1, Ordering::Relaxed) + 1;
-                (control.progress)(Step::Tiles(finished, total));
             });
         }
     });
@@ -335,12 +333,7 @@ pub fn fetch_pano(client: &Client, info: &PanoInfo, zoom: usize, control: &Contr
 
 fn jpeg_bytes(image: &RgbImage, quality: u8) -> Result<Vec<u8>, Error> {
     let mut out = Vec::new();
-    JpegEncoder::new_with_quality(&mut out, quality).write_image(
-        image.as_raw(),
-        image.width(),
-        image.height(),
-        image::ExtendedColorType::Rgb8,
-    )?;
+    JpegEncoder::new_with_quality(&mut out, quality).write_image(image.as_raw(), image.width(), image.height(), image::ExtendedColorType::Rgb8)?;
     Ok(out)
 }
 
@@ -386,11 +379,7 @@ pub fn mini(client: &Client, id: &str, kind: Kind) -> Result<Vec<u8>, Error> {
 fn short_id(id: &str) -> String {
     let clean: String = id.chars().filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_').collect();
     // The first characters of user uploads are the same for all of them: the end tells them apart.
-    if clean.len() > 12 {
-        clean[clean.len() - 12..].to_string()
-    } else {
-        clean
-    }
+    if clean.len() > 12 { clean[clean.len() - 12..].to_string() } else { clean }
 }
 
 /// The file name (without suffixes or extension) of a panorama or a photo.
@@ -458,14 +447,13 @@ pub fn save(image: &RgbImage, path: &Path, format: Format) -> Result<(), Error> 
         let colour = image::ExtendedColorType::Rgb8;
         match format {
             Format::Jpg => JpegEncoder::new_with_quality(writer, JPEG_QUALITY).write_image(image.as_raw(), w, h, colour)?,
-            Format::Png => PngEncoder::new_with_quality(writer, CompressionType::Default, FilterType::Adaptive)
-                .write_image(image.as_raw(), w, h, colour)?,
+            Format::Png => {
+                PngEncoder::new_with_quality(writer, CompressionType::Default, FilterType::Adaptive).write_image(image.as_raw(), w, h, colour)?
+            }
             Format::Tif => {
-                use tiff::encoder::{colortype::RGB8, Compression, TiffEncoder};
+                use tiff::encoder::{Compression, TiffEncoder, colortype::RGB8};
                 TiffEncoder::new(writer)
-                    .and_then(|encoder| {
-                        encoder.with_compression(Compression::Lzw).write_image::<RGB8>(w, h, image.as_raw())
-                    })
+                    .and_then(|encoder| encoder.with_compression(Compression::Lzw).write_image::<RGB8>(w, h, image.as_raw()))
                     .map_err(|e| match e {
                         tiff::TiffError::IoError(io) => Error::Io(io),
                         other => Error::Image(other.to_string()),
@@ -708,10 +696,7 @@ fn free_name(dir: &Path, name: &str, extension: &str) -> PathBuf {
     if !first.exists() {
         return first;
     }
-    (2..10_000)
-        .map(|n| dir.join(format!("{name}_{n}.{extension}")))
-        .find(|p| !p.exists())
-        .unwrap_or(first)
+    (2..10_000).map(|n| dir.join(format!("{name}_{n}.{extension}"))).find(|p| !p.exists()).unwrap_or(first)
 }
 
 #[cfg(test)]

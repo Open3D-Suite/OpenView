@@ -232,19 +232,27 @@ fn run_hdri(image: &Path, params: &hdri::Params, width: Option<u32>, format: Hdr
     let small = hdri::analysis_copy(&source.rgb);
     let model = hdri::Model::new(&small, params);
     match model.sun_used {
-        Some((x, y)) => println!("sun at {x:.3},{y:.3} (ratio {}, radius {} degrees, +{:.1} EV)", params.sun_ratio, params.sun_size, model.gain.log2()),
+        Some((x, y)) => {
+            println!("sun at {x:.3},{y:.3} (ratio {}, radius {} degrees, +{:.1} EV)", params.sun_ratio, params.sun_size, model.gain.log2())
+        }
         None => println!("no sun"),
     }
     let cancel = AtomicBool::new(false);
     let progress = |f: f32| {
-        print!("
-  {:5.1}%", f * 100.0);
+        print!(
+            "
+  {:5.1}%",
+            f * 100.0
+        );
         let _ = std::io::stdout().flush();
     };
     match hdri::write(&source, params, width, format, &out, &cancel, &progress) {
         Ok((w, h)) => {
-            println!("
-saved {} ({w} x {h})", out.display());
+            println!(
+                "
+saved {} ({w} x {h})",
+                out.display()
+            );
             0
         }
         Err(e) => {
@@ -264,7 +272,8 @@ mod tests {
 
     #[test]
     fn download_options_are_read() {
-        let command = parse(&args("https://a.example/x -o out -f png -n -j --max-width 8192 --cover-ground --no-level --no-complete -l list.txt")).unwrap();
+        let command =
+            parse(&args("https://a.example/x -o out -f png -n -j --max-width 8192 --cover-ground --no-level --no-complete -l list.txt")).unwrap();
         let Command::Download { links, lists, options } = command else { panic!("not a download") };
         assert_eq!(links, vec!["https://a.example/x"]);
         assert_eq!(lists, vec![PathBuf::from("list.txt")]);

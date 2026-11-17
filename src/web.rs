@@ -6,8 +6,8 @@
 //! The API, its routes and its answers are those of the original OpenView by Daniel Castellanos
 //! (MIT, see NOTICE), so its interface works unchanged.
 
-use std::collections::hash_map::RandomState;
 use std::collections::HashMap;
+use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hasher};
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -17,7 +17,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use image::RgbImage;
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::geom;
 use crate::hdri::{self, HdrFormat};
@@ -447,10 +447,7 @@ impl Server {
                     let mut state = self.shared.state.lock().unwrap();
                     // Already in the list? Checked and stored at once, so two equal links pasted
                     // together do not both get in.
-                    let duplicate = state
-                        .items
-                        .values()
-                        .any(|other| other.id != id && other.info.as_ref().is_some_and(|i| i.id == info.id));
+                    let duplicate = state.items.values().any(|other| other.id != id && other.info.as_ref().is_some_and(|i| i.id == info.id));
                     let Some(item) = state.items.get_mut(id) else { return };
                     if duplicate {
                         item.status = Status::Error;
@@ -672,8 +669,7 @@ impl Server {
 
     fn hdri_convert(&self, sid: &str, params: hdri::Params, width: Option<u32>, format: HdrFormat) {
         let lang = self.lang();
-        let Some((src, cancel)) = self.shared.state.lock().unwrap().hdri.get(sid).map(|j| (j.src.clone(), j.cancel.clone()))
-        else {
+        let Some((src, cancel)) = self.shared.state.lock().unwrap().hdri.get(sid).map(|j| (j.src.clone(), j.cancel.clone())) else {
             return;
         };
         let me = self.clone();
@@ -701,11 +697,8 @@ impl Server {
 
     fn state_json(&self) -> Value {
         let state = self.shared.state.lock().unwrap();
-        let items: Vec<Value> = state
-            .order
-            .iter()
-            .filter_map(|id| state.items.get(id).map(|item| item.public(state.thumbs.contains_key(id))))
-            .collect();
+        let items: Vec<Value> =
+            state.order.iter().filter_map(|id| state.items.get(id).map(|item| item.public(state.thumbs.contains_key(id)))).collect();
         let hdri: Map<String, Value> = state.hdri.iter().map(|(k, j)| (k.clone(), j.public())).collect();
         let crops: Map<String, Value> = state.crops.iter().map(|(k, j)| (k.clone(), j.public())).collect();
         drop(state);
@@ -1296,23 +1289,12 @@ mod tests {
         // Without the token, or from another site, orders are refused.
         let refused = agent.post(&format!("{url}api/settings")).send("{}").unwrap();
         assert_eq!(refused.status().as_u16(), 403);
-        let other_site = agent
-            .post(&format!("{url}api/settings"))
-            .header("X-Token", token.as_str())
-            .header("Origin", "http://evil.example")
-            .send("{}")
-            .unwrap();
+        let other_site =
+            agent.post(&format!("{url}api/settings")).header("X-Token", token.as_str()).header("Origin", "http://evil.example").send("{}").unwrap();
         assert_eq!(other_site.status().as_u16(), 403);
         let bad = agent.post(&format!("{url}api/settings")).header("X-Token", token.as_str()).send("not json").unwrap();
         assert_eq!(bad.status().as_u16(), 400);
-        let state = agent
-            .get(&format!("{url}api/state"))
-            .header("X-Token", token.as_str())
-            .call()
-            .unwrap()
-            .body_mut()
-            .read_to_string()
-            .unwrap();
+        let state = agent.get(&format!("{url}api/state")).header("X-Token", token.as_str()).call().unwrap().body_mut().read_to_string().unwrap();
         let state: Value = serde_json::from_str(&state).unwrap();
         assert_eq!(state["items"], json!([]));
         assert!(state["settings"]["outdir"].is_string());

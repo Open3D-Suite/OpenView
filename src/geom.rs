@@ -125,12 +125,7 @@ pub struct Sampler<'a> {
 fn cubic_weights(t: f32) -> [f32; 4] {
     let t2 = t * t;
     let t3 = t2 * t;
-    [
-        -0.5 * t3 + t2 - 0.5 * t,
-        1.5 * t3 - 2.5 * t2 + 1.0,
-        -1.5 * t3 + 2.0 * t2 + 0.5 * t,
-        0.5 * t3 - 0.5 * t2,
-    ]
+    [-0.5 * t3 + t2 - 0.5 * t, 1.5 * t3 - 2.5 * t2 + 1.0, -1.5 * t3 + 2.0 * t2 + 0.5 * t, 0.5 * t3 - 0.5 * t2]
 }
 
 impl<'a> Sampler<'a> {
@@ -157,8 +152,7 @@ impl<'a> Sampler<'a> {
         let (x0, y0) = (u.floor(), v.floor());
         let (tx, ty) = ((u - x0) as f32, (v - y0) as f32);
         let (x0, y0) = (x0 as isize, y0 as isize);
-        let (a, b, c, d) =
-            (self.pixel(x0, y0), self.pixel(x0 + 1, y0), self.pixel(x0, y0 + 1), self.pixel(x0 + 1, y0 + 1));
+        let (a, b, c, d) = (self.pixel(x0, y0), self.pixel(x0 + 1, y0), self.pixel(x0, y0 + 1), self.pixel(x0 + 1, y0 + 1));
         let mut out = [0u8; 3];
         for k in 0..3 {
             let top = a[k] + (b[k] - a[k]) * tx;
@@ -187,11 +181,7 @@ impl<'a> Sampler<'a> {
             acc[1] += row[1] * wyj;
             acc[2] += row[2] * wyj;
         }
-        [
-            (acc[0] + 0.5).clamp(0.0, 255.0) as u8,
-            (acc[1] + 0.5).clamp(0.0, 255.0) as u8,
-            (acc[2] + 0.5).clamp(0.0, 255.0) as u8,
-        ]
+        [(acc[0] + 0.5).clamp(0.0, 255.0) as u8, (acc[1] + 0.5).clamp(0.0, 255.0) as u8, (acc[2] + 0.5).clamp(0.0, 255.0) as u8]
     }
 }
 
@@ -200,8 +190,7 @@ impl<'a> Sampler<'a> {
 pub fn reproject(src: &RgbImage, m: &Mat3) -> RgbImage {
     let (w, h) = (src.width() as usize, src.height() as usize);
     let sampler = Sampler::new(src);
-    let columns: Vec<(f64, f64)> =
-        (0..w).map(|x| (((x as f64 + 0.5) / w as f64 - 0.5) * TAU).sin_cos()).collect();
+    let columns: Vec<(f64, f64)> = (0..w).map(|x| (((x as f64 + 0.5) / w as f64 - 0.5) * TAU).sin_cos()).collect();
     let mut out = vec![0u8; w * h * 3];
     out.par_chunks_mut(w * 3).enumerate().for_each(|(y, row)| {
         let (sl, cl) = ((0.5 - (y as f64 + 0.5) / h as f64) * PI).sin_cos();
@@ -239,14 +228,7 @@ pub enum Quality {
 
 /// Renders an ordinary photo (straight lines stay straight) out of a panorama. `level` is the
 /// matrix from [`level_matrix`], when the panorama has to be straightened on the way.
-pub fn perspective(
-    src: &RgbImage,
-    view: &View,
-    out_w: u32,
-    out_h: u32,
-    level: Option<&Mat3>,
-    quality: Quality,
-) -> RgbImage {
+pub fn perspective(src: &RgbImage, view: &View, out_w: u32, out_h: u32, level: Option<&Mat3>, quality: Quality) -> RgbImage {
     let (w, h) = (out_w.max(1) as usize, out_h.max(1) as usize);
     let sampler = Sampler::new(src);
     let focal = (w as f64 / 2.0) / (view.hfov / 2.0).tan();
@@ -305,11 +287,7 @@ pub fn vertical_deviation(image: &RgbImage) -> f64 {
     let height = (width as u64 * image.height() as u64 / image.width().max(1) as u64) as u32;
     let small = image::imageops::resize(image, width, height.max(8), image::imageops::FilterType::Triangle);
     let (w, h) = (small.width() as usize, small.height() as usize);
-    let grey: Vec<f32> = small
-        .as_raw()
-        .chunks_exact(3)
-        .map(|p| 0.299 * p[0] as f32 + 0.587 * p[1] as f32 + 0.114 * p[2] as f32)
-        .collect();
+    let grey: Vec<f32> = small.as_raw().chunks_exact(3).map(|p| 0.299 * p[0] as f32 + 0.587 * p[1] as f32 + 0.114 * p[2] as f32).collect();
     let at = |x: usize, y: usize| grey[y * w + x % w];
     // Rows within 25 degrees of the horizon.
     let (first, last) = ((h as f64 * (65.0 / 180.0)) as usize, (h as f64 * (115.0 / 180.0)) as usize);
@@ -320,10 +298,8 @@ pub fn vertical_deviation(image: &RgbImage) -> f64 {
             let (mut weighted, mut total) = (0f64, 0f64);
             for x in 0..w {
                 let (l, r) = ((x + w - 1) % w, x + 1);
-                let gx = (at(r, y - 1) + 2.0 * at(r, y) + at(r, y + 1))
-                    - (at(l, y - 1) + 2.0 * at(l, y) + at(l, y + 1));
-                let gy = (at(l, y + 1) + 2.0 * at(x, y + 1) + at(r, y + 1))
-                    - (at(l, y - 1) + 2.0 * at(x, y - 1) + at(r, y - 1));
+                let gx = (at(r, y - 1) + 2.0 * at(r, y) + at(r, y + 1)) - (at(l, y - 1) + 2.0 * at(l, y) + at(l, y + 1));
+                let gy = (at(l, y + 1) + 2.0 * at(x, y + 1) + at(r, y + 1)) - (at(l, y - 1) + 2.0 * at(x, y - 1) + at(r, y - 1));
                 let magnitude = (gx * gx + gy * gy).sqrt();
                 if magnitude < 120.0 || gx.abs() < 1e-3 {
                     continue;
@@ -337,11 +313,7 @@ pub fn vertical_deviation(image: &RgbImage) -> f64 {
             (weighted, total)
         })
         .reduce(|| (0.0, 0.0), |a, b| (a.0 + b.0, a.1 + b.1));
-    if sums.1 > 0.0 {
-        sums.0 / sums.1
-    } else {
-        0.0
-    }
+    if sums.1 > 0.0 { sums.0 / sums.1 } else { 0.0 }
 }
 
 #[cfg(test)]
@@ -357,11 +329,7 @@ mod tests {
             let lat = (0.5 - (y as f64 + 0.5) / h as f64) * PI;
             let d = dir_from_lon_lat(lon, lat);
             let cos = d[0] * target[0] + d[1] * target[1] + d[2] * target[2];
-            if cos > (3.0f64).to_radians().cos() {
-                image::Rgb([255, 255, 255])
-            } else {
-                image::Rgb([(x % 64) as u8, 20, 40])
-            }
+            if cos > (3.0f64).to_radians().cos() { image::Rgb([255, 255, 255]) } else { image::Rgb([(x % 64) as u8, 20, 40]) }
         })
     }
 

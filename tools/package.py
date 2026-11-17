@@ -29,9 +29,26 @@ TARGET = "x86_64-pc-windows-msvc"
 
 # Licences of libraries that may be linked into a GPL-3.0-or-later program.
 COMPATIBLE = {
-    "0BSD", "Apache-2.0", "Apache-2.0 WITH LLVM-exception", "BSD-2-Clause", "BSD-3-Clause", "BSL-1.0",
-    "CC0-1.0", "CDLA-Permissive-2.0", "ISC", "LGPL-2.1-or-later", "LGPL-3.0-or-later", "MIT", "MIT-0",
-    "MPL-2.0", "OFL-1.1", "Ubuntu-font-1.0", "Unicode-3.0", "Unicode-DFS-2016", "Unlicense", "Zlib",
+    "0BSD",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BSL-1.0",
+    "CC0-1.0",
+    "CDLA-Permissive-2.0",
+    "ISC",
+    "LGPL-2.1-or-later",
+    "LGPL-3.0-or-later",
+    "MIT",
+    "MIT-0",
+    "MPL-2.0",
+    "OFL-1.1",
+    "Ubuntu-font-1.0",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "Unlicense",
+    "Zlib",
     "GPL-3.0-or-later",
 }
 LICENCE_FILES = re.compile(r"^(LICEN[CS]E|COPYING|NOTICE|UNLICENSE|COPYRIGHT)", re.IGNORECASE)
@@ -85,7 +102,10 @@ def third_party(ver):
     """Checks every library's licence and gathers their licence texts in one file."""
     out = subprocess.run(
         [cargo(), "metadata", "--format-version", "1", "--filter-platform", TARGET, "--locked"],
-        cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
     )
     if out.returncode != 0:
         fail("cargo metadata failed: " + out.stderr.strip())
@@ -104,8 +124,10 @@ def third_party(ver):
         for dep in by_id[current]["deps"]:
             if any(k.get("kind") is None for k in dep["dep_kinds"]):
                 queue.append(dep["pkg"])
-    packages = sorted((p for p in meta["packages"] if p["id"] in linked and p["id"] in used and p["id"] != root),
-                      key=lambda p: (p["name"].lower(), p["version"]))
+    packages = sorted(
+        (p for p in meta["packages"] if p["id"] in linked and p["id"] in used and p["id"] != root),
+        key=lambda p: (p["name"].lower(), p["version"]),
+    )
     lines = [
         f"OpenView {ver} contains the following libraries. Each is listed with its licence and,",
         "below, the licence texts that come with it.",
@@ -134,8 +156,13 @@ def third_party(ver):
 
 
 def target_dir():
-    out = subprocess.run([cargo(), "metadata", "--format-version", "1", "--no-deps"], cwd=ROOT,
-                         capture_output=True, text=True, encoding="utf-8")
+    out = subprocess.run(
+        [cargo(), "metadata", "--format-version", "1", "--no-deps"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
     return Path(json.loads(out.stdout)["target_directory"])
 
 
