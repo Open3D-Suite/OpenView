@@ -34,7 +34,7 @@ impl Lang {
     #[cfg(windows)]
     pub fn system() -> Lang {
         #[link(name = "kernel32")]
-        extern "system" {
+        unsafe extern "system" {
             fn GetUserDefaultUILanguage() -> u16;
         }
         // SAFETY: a Win32 call without arguments that returns a language identifier.

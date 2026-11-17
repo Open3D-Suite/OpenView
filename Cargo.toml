@@ -2,7 +2,7 @@
 [package]
 name = "openview"
 version = "0.2.1"
-edition = "2021"
+edition = "2024"
 description = "Download 360 panoramas and photos from map applications at full resolution, with a viewer, crops and HDRI"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/carlesllavata/OpenView"

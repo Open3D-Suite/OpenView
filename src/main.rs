@@ -6,7 +6,7 @@
 #[cfg(windows)]
 fn attach_console() {
     #[link(name = "kernel32")]
-    extern "system" {
+    unsafe extern "system" {
         fn AttachConsole(process: u32) -> i32;
     }
     const PARENT: u32 = u32::MAX;

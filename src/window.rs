@@ -47,7 +47,7 @@ fn on_a_monitor(x: i32, y: i32) -> bool {
         y: i32,
     }
     #[link(name = "user32")]
-    extern "system" {
+    unsafe extern "system" {
         fn MonitorFromPoint(point: Point, flags: u32) -> isize;
     }
     // SAFETY: a plain Win32 query taking a point by value; 0 asks for null when no monitor has it.
@@ -57,7 +57,7 @@ fn on_a_monitor(x: i32, y: i32) -> bool {
 /// Asks a yes/no question in a message box that belongs to the window.
 fn confirm(hwnd: isize, title: &str, question: &str) -> bool {
     #[link(name = "user32")]
-    extern "system" {
+    unsafe extern "system" {
         fn MessageBoxW(hwnd: isize, text: *const u16, caption: *const u16, kind: u32) -> i32;
     }
     let wide = |s: &str| s.encode_utf16().chain(std::iter::once(0)).collect::<Vec<u16>>();
