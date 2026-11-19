@@ -206,7 +206,7 @@ Rust (stable) on Windows; the checks also need Python 3.11 or newer and the ruff
 tools\check.ps1                          the quick checks: format, lints and unit tests
 tools\check.ps1 -Full                    also the checks against the real service (needs the network)
 cargo build --release                    the program, in target\release\OpenView.exe
-python -I tools\package.py               tests, release build and dist\openview-<version>-windows-x64.zip
+python -I tools\repo.py package          checks, release build and dist\openview-<version>-windows-x64.zip
 ```
 
 The interface is `ui/index.html` with its texts in `ui/i18n/en.json` and `ui/i18n/es.json`; both are

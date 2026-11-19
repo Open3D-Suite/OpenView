@@ -15,7 +15,8 @@ as a change that makes it old.
 - `src/pano.rs`: downloads, tiles, crops, saving. `src/geom.rs`: the geometry of 360 images. `src/extras.rs`:
   north, ground patch, partial photos. `src/hdri.rs`: the HDRI converter.
 - `src/text.rs`: the program's own messages. `src/settings.rs`: the settings, in `%APPDATA%\OpenView`.
-- `tools/package.py`: the packager. `build.rs`: the exe's icon and file properties.
+- `tools/package.py`: the packager from before the common one, which now does its work; it stays until
+  it is deleted. `build.rs`: the exe's icon and file properties.
 
 ## Build and check
 
@@ -29,17 +30,24 @@ as a change that makes it old.
   - `cargo test --locked` (84 tests; none needs the Internet)
   - `ruff format --check .` and `ruff check .`, for the Python in `tools/`
   - only with `-Full`: `cargo test --locked --test live -- --ignored` (6 tests that need the network)
-- `.editorconfig`, `.gitattributes`, `rustfmt.toml`, `clippy.toml`, `ruff.toml`, `LICENSE`, `tools/check.ps1`
-  and `tools/repo.py` are the same in every Open3D repo. Do not change them here. No formatter touches `ui/`.
+- `.editorconfig`, `.gitattributes`, `rustfmt.toml`, `clippy.toml`, `ruff.toml`, `LICENSE`,
+  `tools/check.ps1`, `tools/repo.py`, `tools/repo_package.py` and `tools/repo_release.py` are the same in
+  every Open3D repo. Do not change them here. No formatter touches `ui/`.
 
 ## Version and release
 
 - The version is in `Cargo.toml`; `python -I tools/repo.py version set X.Y.Z` also writes it into
-  `Cargo.lock` and the README's `**Version X.Y.Z**` line. The CHANGELOG's `## X.Y.Z` heading is written
-  by hand. The packager checks the README and the CHANGELOG; `## In development` also passes.
-- `python -I tools/package.py` checks the licences of the dependencies, runs the tests, builds, and writes
-  `dist/openview-<version>-windows-x64.zip` and `dist/SHA256SUMS.txt`. It refuses an exe that still holds a
-  path of the computer that built it, or that does not answer `OpenView <version>` to `--version`.
+  `Cargo.lock` and the README's `**Version X.Y.Z**` line; `tools\check.ps1` fails if they disagree.
+- `python -I tools/repo.py package` makes the release package as the `[package]` table of
+  `tools/repo.toml` says: the version and its `## X.Y.Z` section in the CHANGELOG, the quick checks,
+  `cargo build --release --locked` without this computer's folders in the exe, the licences of the
+  dependencies in `THIRD-PARTY-LICENSES.txt`, then `dist/openview-<version>-windows-x64.zip` (`OpenView.exe`,
+  README, LICENSE, NOTICE, CHANGELOG, `LICENSES/*.txt`) and `dist/SHA256SUMS.txt`. It refuses an exe that
+  holds a path of the computer that built it, or whose file version or `--version` is not the version.
+- `python -I tools/repo.py release X.Y.Z` turns `## In development` into `## X.Y.Z — <date>` (without that
+  section it stops), sets the version, commits `Release X.Y.Z`, packages, tags `vX.Y.Z` and prints the
+  pushes to approve; run again once they are done, it makes the GitHub release as a draft. It never
+  pushes. `--dry-run` tries it all and writes only to `dist/`.
 - The Open3D launcher needs `OpenView.exe` at the root of the zip, with the release's version as its file
   version; `build.rs` takes it from `Cargo.toml`.
 

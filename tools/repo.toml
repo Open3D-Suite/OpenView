@@ -1,5 +1,6 @@
 # What the common OPEN3D tools need to know about this repository. tools/repo.py reads it:
-# tools/check.ps1 runs the checks, and "python -I tools/repo.py version set X.Y.Z" writes a new version.
+# tools/check.ps1 runs the checks, "python -I tools/repo.py version set X.Y.Z" writes a new version,
+# "python -I tools/repo.py package" makes the release package and "release X.Y.Z" the release.
 
 # Where the version lives (`source`) and the other places that repeat it. Each one is a file and a
 # pattern whose one group is the version; "^" is the start of a line.
@@ -38,3 +39,22 @@ run = ["ruff", "check", "."]
 name = "cargo test live"
 run = ["cargo", "test", "--locked", "--test", "live", "--", "--ignored"]
 full = true
+
+# The release package: dist/openview-<version>-windows-x64.zip, with OpenView.exe at its root, and
+# dist/SHA256SUMS.txt. The launcher installs it from there.
+[package]
+name = "OpenView"
+build = [["cargo", "build", "--release", "--locked"]]
+# THIRD-PARTY-LICENSES.txt: every library cargo links in, with its licence checked and its texts.
+third_party = "cargo"
+files = [
+    { from = "{cargo_target}/release/OpenView.exe", to = "OpenView.exe" },
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "CHANGELOG.md",
+    # The licence of the original OpenView, whose code this one includes (MIT).
+    "LICENSES/*.txt",
+]
+exe = "OpenView.exe"
+version_answer = "OpenView {version}"
