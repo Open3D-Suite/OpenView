@@ -30,6 +30,8 @@ as a change that makes it old.
   - `cargo test --locked` (84 tests; none needs the Internet)
   - `ruff format --check .` and `ruff check .`, for the Python in `tools/`
   - only with `-Full`: `cargo test --locked --test live -- --ignored` (6 tests that need the network)
+- CI: `.github/workflows/check.yml` runs `tools\check.ps1`, without `-Full`, on every push and pull request
+  to `main`, on GitHub's Windows runner with Python 3.14.
 - `.editorconfig`, `.gitattributes`, `rustfmt.toml`, `clippy.toml`, `ruff.toml`, `LICENSE`,
   `tools/check.ps1`, `tools/repo.py`, `tools/repo_package.py` and `tools/repo_release.py` are the same in
   every Open3D repo. Do not change them here. No formatter touches `ui/`.
