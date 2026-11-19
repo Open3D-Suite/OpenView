@@ -1,0 +1,40 @@
+# What the common OPEN3D tools need to know about this repository. tools/repo.py reads it:
+# tools/check.ps1 runs the checks, and "python -I tools/repo.py version set X.Y.Z" writes a new version.
+
+# Where the version lives (`source`) and the other places that repeat it. Each one is a file and a
+# pattern whose one group is the version; "^" is the start of a line.
+[version]
+source = { file = "Cargo.toml", pattern = '^version = "([^"]+)"' }
+places = [
+    { file = "Cargo.lock", pattern = '^name = "openview"\nversion = "([^"]+)"' },
+    { file = "README.md", pattern = '^\*\*Version ([^*]+)\*\*' },
+]
+# Run after a new version is written: cargo looks Cargo.lock over, without touching the libraries.
+after_set = [["cargo", "update", "--workspace", "--offline"]]
+
+# The checks, in the order they run. `full = true` marks one that only tools/check.ps1 -Full runs.
+[[check]]
+name = "cargo fmt"
+run = ["cargo", "fmt", "--all", "--check"]
+
+[[check]]
+name = "cargo clippy"
+run = ["cargo", "clippy", "--workspace", "--all-targets", "--locked", "--", "-D", "warnings"]
+
+[[check]]
+name = "cargo test"
+run = ["cargo", "test", "--locked"]
+
+[[check]]
+name = "ruff format"
+run = ["ruff", "format", "--check", "."]
+
+[[check]]
+name = "ruff check"
+run = ["ruff", "check", "."]
+
+# The tests against the real map service: they need the network and depend on a third party.
+[[check]]
+name = "cargo test live"
+run = ["cargo", "test", "--locked", "--test", "live", "--", "--ignored"]
+full = true

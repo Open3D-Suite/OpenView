@@ -20,19 +20,23 @@ as a change that makes it old.
 ## Build and check
 
 - Build: `cargo build --release --locked`.
-- Checks, all of which must pass:
+- Checks: `tools\check.ps1` runs them all, and all must pass. It needs Python 3.11 or newer and the
+  ruff that `ruff.toml` names. First what `tools/repo.py` has built in, then what `tools/repo.toml` lists:
+  - the version agrees in its three places; every source has its licence line; `Cargo.toml` has the
+    common lints; no file holds a path of somebody's computer
   - `cargo fmt --all --check`
   - `cargo clippy --workspace --all-targets --locked -- -D warnings`
   - `cargo test --locked` (84 tests; none needs the Internet)
-  - `ruff format --check .` and `ruff check .`, for `tools/package.py`
-- `cargo test --locked --test live -- --ignored` runs the 6 tests that need the network (ignored otherwise).
-- `.editorconfig`, `.gitattributes`, `rustfmt.toml`, `clippy.toml` and `ruff.toml` are the same in every
-  Open3D repo. Do not change them here. No formatter touches `ui/`.
+  - `ruff format --check .` and `ruff check .`, for the Python in `tools/`
+  - only with `-Full`: `cargo test --locked --test live -- --ignored` (6 tests that need the network)
+- `.editorconfig`, `.gitattributes`, `rustfmt.toml`, `clippy.toml`, `ruff.toml`, `LICENSE`, `tools/check.ps1`
+  and `tools/repo.py` are the same in every Open3D repo. Do not change them here. No formatter touches `ui/`.
 
 ## Version and release
 
-- The version is in `Cargo.toml` and nowhere else by hand, except the `**Version X.Y.Z**` line of the
-  README and the CHANGELOG's `## X.Y.Z` heading. The packager checks both; `## In development` also passes.
+- The version is in `Cargo.toml`; `python -I tools/repo.py version set X.Y.Z` also writes it into
+  `Cargo.lock` and the README's `**Version X.Y.Z**` line. The CHANGELOG's `## X.Y.Z` heading is written
+  by hand. The packager checks the README and the CHANGELOG; `## In development` also passes.
 - `python -I tools/package.py` checks the licences of the dependencies, runs the tests, builds, and writes
   `dist/openview-<version>-windows-x64.zip` and `dist/SHA256SUMS.txt`. It refuses an exe that still holds a
   path of the computer that built it, or that does not answer `OpenView <version>` to `--version`.

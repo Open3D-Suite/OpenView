@@ -200,11 +200,11 @@ too (see the limits below).
 
 ## Build from source
 
-Rust (stable) on Windows:
+Rust (stable) on Windows; the checks also need Python 3.11 or newer and the ruff that `ruff.toml` names:
 
 ```
-cargo test                               unit tests
-cargo test --test live -- --ignored      checks against the real service (needs the network)
+tools\check.ps1                          the quick checks: format, lints and unit tests
+tools\check.ps1 -Full                    also the checks against the real service (needs the network)
 cargo build --release                    the program, in target\release\OpenView.exe
 python -I tools\package.py               tests, release build and dist\openview-<version>-windows-x64.zip
 ```
