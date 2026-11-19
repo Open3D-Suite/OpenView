@@ -15,8 +15,7 @@ as a change that makes it old.
 - `src/pano.rs`: downloads, tiles, crops, saving. `src/geom.rs`: the geometry of 360 images. `src/extras.rs`:
   north, ground patch, partial photos. `src/hdri.rs`: the HDRI converter.
 - `src/text.rs`: the program's own messages. `src/settings.rs`: the settings, in `%APPDATA%\OpenView`.
-- `tools/package.py`: the packager from before the common one, which now does its work; it stays until
-  it is deleted. `build.rs`: the exe's icon and file properties.
+- `build.rs`: the exe's icon and file properties.
 
 ## Build and check
 
