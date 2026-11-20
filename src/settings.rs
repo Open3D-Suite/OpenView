@@ -67,11 +67,16 @@ impl Default for Settings {
     }
 }
 
+/// Where downloads go at first: `Pictures\OpenView` in the person's profile (`%USERPROFILE%`, or the
+/// folder Windows gives when that is not set). Never a relative folder: that would be the folder
+/// OpenView was started in, which is its install folder when it starts from the Start menu.
 fn default_out_dir() -> PathBuf {
-    match std::env::var_os("USERPROFILE") {
-        Some(home) => PathBuf::from(home).join("Pictures").join("OpenView"),
-        None => PathBuf::from("."),
-    }
+    out_dir_in(std::env::home_dir())
+}
+
+/// [`default_out_dir`] for this profile folder. Without one, the last resort is the temporary folder.
+fn out_dir_in(profile: Option<PathBuf>) -> PathBuf {
+    profile.map_or_else(std::env::temp_dir, |dir| dir.join("Pictures")).join("OpenView")
 }
 
 impl Settings {
@@ -207,6 +212,15 @@ mod tests {
         assert_eq!((settings.outdir.clone(), settings.window), (before.outdir, None));
         settings.apply_patch(&json!({"fmt": "bmp", "theme": "pink", "lang": "fr"}));
         assert_eq!((settings.fmt, settings.theme.as_str(), settings.lang.as_str()), (Format::Png, "dark", "es"));
+    }
+
+    #[test]
+    fn downloads_go_to_the_pictures_of_the_profile_and_never_to_a_relative_folder() {
+        let profile = PathBuf::from(r"C:\Users\user");
+        assert_eq!(out_dir_in(Some(profile.clone())), profile.join("Pictures").join("OpenView"));
+        let last = out_dir_in(None);
+        assert_eq!(last, std::env::temp_dir().join("OpenView"));
+        assert!(last.is_absolute());
     }
 
     #[test]

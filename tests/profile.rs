@@ -41,3 +41,11 @@ fn without_the_profile_variables_the_window_keeps_its_data_in_the_profile() {
     let webview = openview::folders::prepare().webview;
     assert_eq!(webview, Some(profile.join("AppData").join("Local").join("Open3D").join("OpenView").join("webview")));
 }
+
+#[test]
+fn without_the_profile_variables_downloads_still_go_to_the_pictures_folder() {
+    let Some(profile) = profile_or_run_again("without_the_profile_variables_downloads_still_go_to_the_pictures_folder") else { return };
+    // Never the folder OpenView was started in, which is its install folder from the Start menu.
+    let outdir = openview::settings::Settings::default().outdir;
+    assert_eq!(outdir, profile.join("Pictures").join("OpenView"));
+}

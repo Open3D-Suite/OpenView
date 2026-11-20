@@ -23,6 +23,9 @@ What changed for users in each version of OpenView, newest first.
 - **The window opens even when the `LOCALAPPDATA` variable is missing.** The data of the window then
   goes to `AppData\Local\Open3D\OpenView` in your user folder. Before, it went beside `OpenView.exe`,
   which cannot be written once OpenView is in Program Files, and OpenView opened in the browser instead.
+- **Downloads go to `Pictures\OpenView` even when the `USERPROFILE` variable is missing:** OpenView asks
+  Windows for your user folder. Before, the first folder was the one OpenView was started in, which is
+  the folder it is installed in when it starts from the Start menu.
 
 ## 0.2.1 — 16 November 2026
 

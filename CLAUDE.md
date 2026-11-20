@@ -31,7 +31,7 @@ as a change that makes it old.
     common lints; no file holds a path of somebody's computer
   - `cargo fmt --all --check`
   - `cargo clippy --workspace --all-targets --locked -- -D warnings`
-  - `cargo test --locked` (115 tests; none needs the Internet)
+  - `cargo test --locked` (117 tests; none needs the Internet)
   - `ruff format --check .` and `ruff check .`, for the Python in `tools/`
   - only with `-Full`: `cargo test --locked --test live -- --ignored` (6 tests that need the network)
 - CI: `.github/workflows/check.yml` runs `tools\check.ps1`, without `-Full`, on every push and pull request
