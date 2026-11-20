@@ -35,9 +35,10 @@ as a change that makes it old.
 - CI: `.github/workflows/check.yml` runs `tools\check.ps1`, without `-Full`, on every push and pull request
   to `main`, on GitHub's Windows runner with Python 3.14.
 - `.editorconfig`, `.gitattributes`, `rustfmt.toml`, `clippy.toml`, `ruff.toml`, `LICENSE`,
-  `tools/check.ps1`, `tools/repo.py`, `tools/repo_package.py` and `tools/repo_release.py` are the same in
-  every Open3D repo, and `src/open3d_settings.rs` with `src/open3d_settings_cases.txt` in every repo that
-  has them. Do not change them here. No formatter touches `ui/`.
+  `tools/check.ps1`, `tools/repo.py`, `tools/repo_package.py`, `tools/repo_release.py` and
+  `tools/repo_msi.py` are the same in every Open3D repo, and `src/open3d_settings.rs` with
+  `src/open3d_settings_cases.txt` in every repo that has them. Do not change them here. No formatter
+  touches `ui/`.
 
 ## Version and release
 
