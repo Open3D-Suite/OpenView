@@ -7,6 +7,7 @@
 
 pub mod cli;
 pub mod extras;
+pub mod folders;
 pub mod geom;
 pub mod hdri;
 pub mod links;

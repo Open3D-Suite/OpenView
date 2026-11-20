@@ -127,6 +127,19 @@ impl Lang {
         }
     }
 
+    /// Said when the settings of an OpenView from before could not be copied to its new folder, so
+    /// this run uses them where they are.
+    pub fn settings_not_carried(self, error: &str) -> String {
+        match self {
+            Lang::En => {
+                format!("The settings of the earlier OpenView could not be copied to its new folder, so it uses the old one this time: {error}")
+            }
+            Lang::Es => {
+                format!("No se pudieron copiar los ajustes del OpenView anterior a su carpeta nueva, así que esta vez usa la antigua: {error}")
+            }
+        }
+    }
+
     pub fn not_spherical(self, w: u32, h: u32) -> String {
         match self {
             Lang::En => format!("The image is not a 360 panorama (2:1): it is {w} x {h}."),

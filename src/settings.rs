@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! What the app remembers between runs: the download options, the theme, the language and the
-//! window's place. Kept in `%APPDATA%\OpenView\settings.json`, with the same keys the interface
-//! uses. The language's source is the one every Open3D app shares (`open3d_settings`).
+//! window's place. Kept in `settings.json` in `%APPDATA%\Open3D\OpenView` (`folders.rs`), with the
+//! same keys the interface uses. The language's source is the one every Open3D app shares
+//! (`open3d_settings`).
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -73,25 +74,14 @@ fn default_out_dir() -> PathBuf {
     }
 }
 
-/// The folder the app keeps its data in.
-pub fn data_dir() -> PathBuf {
-    match std::env::var_os("APPDATA") {
-        Some(appdata) => PathBuf::from(appdata).join("OpenView"),
-        None => PathBuf::from(".").join("OpenView"),
-    }
-}
-
 impl Settings {
-    pub fn file() -> PathBuf {
-        data_dir().join("settings.json")
+    /// The settings saved in `file` (`folders::Folders::settings_file` in the app), or the defaults
+    /// when there are none or they cannot be read.
+    pub fn load_from(file: &Path) -> Settings {
+        fs::read_to_string(file).ok().and_then(|text| serde_json::from_str(&text).ok()).unwrap_or_default()
     }
 
-    /// The saved settings, or the defaults when there are none or they cannot be read.
-    pub fn load() -> Settings {
-        fs::read_to_string(Self::file()).ok().and_then(|text| serde_json::from_str(&text).ok()).unwrap_or_default()
-    }
-
-    /// Keeps the settings in `file` ([`Settings::file`] in the app).
+    /// Keeps the settings in `file`.
     pub fn save_to(&self, file: &Path) {
         if let Some(dir) = file.parent() {
             let _ = fs::create_dir_all(dir);
@@ -252,6 +242,16 @@ mod tests {
             let _ = fs::remove_dir_all(&self.0);
             let _ = fs::remove_file(&self.0);
         }
+    }
+
+    #[test]
+    fn settings_are_read_from_the_file_they_are_kept_in() {
+        let folder = Shared::new("file");
+        let file = folder.0.join("OpenView").join("settings.json");
+        assert_eq!(Settings::load_from(&file), Settings::default());
+        let settings = Settings { theme: "dark".into(), fmt: Format::Png, ..Default::default() };
+        settings.save_to(&file);
+        assert_eq!(Settings::load_from(&file), settings);
     }
 
     fn with(lang: &str, language_shared: bool) -> Settings {

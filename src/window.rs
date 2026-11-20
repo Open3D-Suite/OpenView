@@ -14,7 +14,8 @@ use tao::platform::windows::WindowExtWindows;
 use tao::window::{Icon, WindowBuilder};
 use wry::{PageLoadEvent, WebContext, WebViewBuilder};
 
-use crate::settings::{self, WindowPlace};
+use crate::folders;
+use crate::settings::WindowPlace;
 use crate::text::{Lang, Msg};
 use crate::web::Server;
 
@@ -73,7 +74,10 @@ fn confirm(hwnd: isize, title: &str, question: &str) -> bool {
 /// Opens the window and runs until it is closed. `open` are links to add straight away; a path to
 /// an image on disk opens it in the HDRI converter instead.
 pub fn run(open: Vec<String>) -> Result<(), String> {
-    let server = Server::start()?;
+    // First, before the settings are read and before WebView2 writes anything: the settings of an
+    // OpenView from before are copied to its new folder (`folders.rs`).
+    let folders = folders::prepare();
+    let server = Server::start(&folders)?;
     let (links, images): (Vec<String>, Vec<String>) = open.into_iter().partition(|item| !Path::new(item).is_file());
     server.add_links(&links);
     let mut url = server.url().to_string();
@@ -102,7 +106,8 @@ pub fn run(open: Vec<String>) -> Result<(), String> {
     server.set_parent(window.hwnd());
 
     let proxy = event_loop.create_proxy();
-    let mut context = WebContext::new(Some(settings::data_dir().join("webview")));
+    // Not copied from before: WebView2 makes its data again, in OpenView's data folder.
+    let mut context = WebContext::new(folders.webview);
     let base = server.url().to_string();
     let webview = WebViewBuilder::new_with_web_context(&mut context)
         .with_url(&url)

@@ -30,8 +30,10 @@ Two ways, and nothing else is needed (no Python, no runtime):
   [releases page](https://github.com/carlesllavata/OpenView/releases/latest), unzip it anywhere and
   run `OpenView.exe`. To remove it, delete the folder.
 
-Removing OpenView either way keeps its settings in `%APPDATA%\OpenView`; delete that folder too if
-you want them gone.
+Removing OpenView either way keeps its settings in `%APPDATA%\Open3D\OpenView` and the data of its
+window in `%LOCALAPPDATA%\Open3D\OpenView`; delete those folders too if you want them gone. Version
+0.2.1 and earlier kept both in `%APPDATA%\OpenView`: the first start of a newer version copies the
+settings to the new folder and leaves the old one as it was, so that one can go too.
 
 The program is not code-signed, so the first time Windows may show "Windows protected your PC":
 choose *More info* and then *Run anyway*. `SHA256SUMS.txt` on the release page lets you check the
@@ -130,7 +132,7 @@ cancelled. For lighting, 4K–8K is plenty; the 16K JPG can stay as the sharp ba
 ### Other details
 
 If you close the window with downloads running, it asks first. The window remembers its size and
-place, the theme and every option, in `%APPDATA%\OpenView\settings.json`, and the language in
+place, the theme and every option, in `%APPDATA%\Open3D\OpenView\settings.json`, and the language in
 `%APPDATA%\Open3D\settings.json`, which the Open3D apps share. Everything
 runs on your computer: no account, no telemetry, nothing is sent anywhere except the requests for
 the images themselves.

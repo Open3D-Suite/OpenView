@@ -19,6 +19,7 @@ use std::time::{Duration, Instant};
 use image::RgbImage;
 use serde_json::{Map, Value, json};
 
+use crate::folders::Folders;
 use crate::hdri::{self, HdrFormat};
 use crate::links::{self, Kind};
 use crate::pano::{self, Control, Crop, Options, Step};
@@ -278,7 +279,7 @@ struct Shared {
     base_url: String,
     state: Mutex<State>,
     settings: Mutex<Settings>,
-    /// Where `settings` are kept; `None` keeps them in memory only (tests).
+    /// Where `settings` are kept; `None` keeps them in memory only (tests, or no settings folder).
     settings_file: Option<PathBuf>,
     /// The folder of `settings.json`, the language every Open3D app shares.
     shared_dir: Option<PathBuf>,
@@ -304,10 +305,21 @@ pub struct Server {
 }
 
 impl Server {
-    /// Starts listening on a free port of 127.0.0.1, with the saved settings and the language
-    /// every Open3D app shares (`%APPDATA%\Open3D`, or the folder `OPEN3D_SETTINGS_DIR` names).
-    pub fn start() -> Result<Server, String> {
-        Server::start_with(Settings::load(), Some(Settings::file()), open3d_settings::settings_dir())
+    /// Starts listening on a free port of 127.0.0.1, with the settings saved in the folders of this
+    /// run (`folders::prepare`) and the language every Open3D app shares (`%APPDATA%\Open3D`, or the
+    /// folder `OPEN3D_SETTINGS_DIR` names). Settings that could not be carried over are a notice.
+    pub fn start(folders: &Folders) -> Result<Server, String> {
+        Server::start_in(folders, open3d_settings::settings_dir())
+    }
+
+    /// [`Server::start`] with the shared language in `shared_dir`.
+    fn start_in(folders: &Folders, shared_dir: Option<PathBuf>) -> Result<Server, String> {
+        let settings = folders.settings_file.as_deref().map(Settings::load_from).unwrap_or_default();
+        let server = Server::start_with(settings, folders.settings_file.clone(), shared_dir)?;
+        if let Some(problem) = &folders.problem {
+            server.notify(server.lang().settings_not_carried(problem));
+        }
+        Ok(server)
     }
 
     /// [`Server::start`] with these settings, kept in `settings_file`, and the shared language in
@@ -1412,5 +1424,30 @@ mod tests {
         let missing = agent.get(&format!("{url}nothing")).call().unwrap();
         assert_eq!(missing.status().as_u16(), 404);
         assert!(!dir.exists(), "starting and serving write nothing");
+    }
+
+    #[test]
+    fn the_settings_of_this_run_are_read_and_kept_in_its_file_and_a_failed_copy_is_told() {
+        // Settings an OpenView from before could not copy to its new folder: this run uses them where
+        // they are, and the page says so, once.
+        let dir = shared_folder("folders");
+        let file = dir.join("OpenView").join("settings.json");
+        Settings { theme: "dark".into(), fmt: pano::Format::Png, language_shared: true, ..Settings::default() }.save_to(&file);
+        let folders = Folders { settings_file: Some(file.clone()), webview: None, problem: Some("the reason".into()) };
+        let server = Server::start_in(&folders, Some(dir.join("Open3D"))).expect("started");
+        let first = server.index();
+        assert!(first.contains(r#"data-theme="dark">"#) && server.settings().fmt == pano::Format::Png, "the settings of the file are used");
+        assert!(first.contains(&server.lang().settings_not_carried("the reason")), "the page says so");
+        assert!(Lang::Es.settings_not_carried("x").starts_with("No se pudieron copiar los ajustes del OpenView anterior"));
+        assert!(server.index().contains("const NOTICES = [];"));
+        server.post("/api/settings", &json!({"north": true}));
+        assert!(Settings::load_from(&file).north, "and kept in it");
+        assert!(!dir.join("Open3D").exists(), "the shared language is not written for nothing");
+        // Without a file the settings are the defaults, kept in memory only.
+        let server = Server::start_in(&Folders::default(), Some(dir.join("Open3D"))).expect("started");
+        assert_eq!(server.settings(), Settings { language_shared: true, ..Settings::default() });
+        server.post("/api/settings", &json!({"north": true}));
+        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 1);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
