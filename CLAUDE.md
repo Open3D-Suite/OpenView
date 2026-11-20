@@ -52,10 +52,15 @@ as a change that makes it old.
   dependencies in `THIRD-PARTY-LICENSES.txt`, then `dist/openview-<version>-windows-x64.zip` (`OpenView.exe`,
   README, LICENSE, NOTICE, CHANGELOG, `LICENSES/*.txt`) and `dist/SHA256SUMS.txt`. It refuses an exe that
   holds a path of the computer that built it, or whose file version or `--version` is not the version.
+- From the `[package.msi]` table it also makes `dist/openview-<version>-windows-x64.msi` with WiX 5 (`wix`
+  on PATH or as a .NET global tool): the same files, for everyone on the computer, into
+  `C:\Program Files\Open3D\OpenView`, with the Start menu shortcut `OpenView` and `assets/icon.ico` in
+  Installed apps. It is checked before it is written (WiX's ICEs, and its own tables and files compared
+  with the zip) and never installed.
 - `python -I tools/repo.py release X.Y.Z` turns `## In development` into `## X.Y.Z — <date>` (without that
   section it stops), sets the version, commits `Release X.Y.Z`, packages, tags `vX.Y.Z` and prints the
-  pushes to approve; run again once they are done, it makes the GitHub release as a draft. It never
-  pushes. `--dry-run` tries it all and writes only to `dist/`.
+  pushes to approve; run again once they are done, it makes the GitHub release as a draft, with the zip,
+  the MSI and `SHA256SUMS.txt`. It never pushes. `--dry-run` tries it all and writes only to `dist/`.
 - The Open3D launcher needs `OpenView.exe` at the root of the zip, with the release's version as its file
   version; `build.rs` takes it from `Cargo.toml`.
 
@@ -95,3 +100,5 @@ as a change that makes it old.
 - Debug builds and tests are optimised too (`[profile.dev]`): the image code is too slow otherwise.
 - Keys of `ui/i18n/` ending in `_html` go into the page with their markup; the others are escaped.
 - The page's 360 viewer looks along -z and `src/geom.rs` along +z: `viewer_matrix` adapts the levelling.
+- The `upgrade_code` of `[package.msi]` never changes: with another one, Windows would install a new
+  version beside the old one instead of in its place.

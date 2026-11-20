@@ -40,8 +40,9 @@ name = "cargo test live"
 run = ["cargo", "test", "--locked", "--test", "live", "--", "--ignored"]
 full = true
 
-# The release package: dist/openview-<version>-windows-x64.zip, with OpenView.exe at its root, and
-# dist/SHA256SUMS.txt. The launcher installs it from there.
+# The release package: dist/openview-<version>-windows-x64.zip, with OpenView.exe at its root, the
+# Windows Installer package dist/openview-<version>-windows-x64.msi, which installs the same files into
+# C:\Program Files\Open3D\OpenView, and dist/SHA256SUMS.txt. The launcher installs them from there.
 [package]
 name = "OpenView"
 build = [["cargo", "build", "--release", "--locked"]]
@@ -58,3 +59,10 @@ files = [
 ]
 exe = "OpenView.exe"
 version_answer = "OpenView {version}"
+
+[package.msi]
+# Made once for OpenView and never changed: by it Windows knows that a new version replaces the old.
+upgrade_code = "431A74A1-750B-4F27-8EA0-2B8DC11AA306"
+shortcut = "OpenView"
+# The icon build.rs gives OpenView.exe, for Installed apps.
+icon = "assets/icon.ico"

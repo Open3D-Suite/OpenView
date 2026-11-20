@@ -16,6 +16,10 @@ What changed for users in each version of OpenView, newest first.
   to be set up. The old folder is left as it was, and an older OpenView still finds its settings there.
 - **Nothing else to install.** The Visual C++ runtime is now inside `OpenView.exe`, so it starts on a
   Windows that has no Visual C++ Redistributable.
+- **An installer is on its way.** Each release also carries `openview-<version>-windows-x64.msi`, which
+  installs OpenView for everyone on the computer in `C:\Program Files\Open3D\OpenView`, with a shortcut
+  in the Start menu; Windows asks for permission first. The Open3D launcher will use it in a coming
+  version; the zip stays as it is.
 
 ## 0.2.1 — 16 November 2026
 
