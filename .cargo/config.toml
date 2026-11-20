@@ -1,0 +1,7 @@
+# What belongs to one computer, such as a build folder on a local disk, goes in
+# .cargo/config.local.toml, which Git ignores.
+include = [{ path = "config.local.toml", optional = true }]
+
+# The Visual C++ runtime is linked into OpenView.exe, so nothing has to be installed beside it.
+[target.x86_64-pc-windows-msvc]
+rustflags = ["-C", "target-feature=+crt-static"]

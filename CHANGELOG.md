@@ -14,6 +14,8 @@ What changed for users in each version of OpenView, newest first.
   settings from `%APPDATA%\OpenView`, so the folder, the format, the options, the theme and the window's
   place stay as they were. The data of the window is not copied: it is made again, and nothing in it has
   to be set up. The old folder is left as it was, and an older OpenView still finds its settings there.
+- **Nothing else to install.** The Visual C++ runtime is now inside `OpenView.exe`, so it starts on a
+  Windows that has no Visual C++ Redistributable.
 
 ## 0.2.1 — 16 November 2026
 

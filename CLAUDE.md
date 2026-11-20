@@ -22,7 +22,9 @@ as a change that makes it old.
 
 ## Build and check
 
-- Build: `cargo build --release --locked`.
+- Build: `cargo build --release --locked`. `.cargo/config.toml` links the Visual C++ runtime into the exe
+  (`+crt-static`), so `OpenView.exe` needs no `VCRUNTIME140.dll`; it reads the ignored
+  `.cargo/config.local.toml` when there is one, for a build folder of one computer.
 - Checks: `tools\check.ps1` runs them all, and all must pass. It needs Python 3.11 or newer and the
   ruff that `ruff.toml` names. First what `tools/repo.py` has built in, then what `tools/repo.toml` lists:
   - the version agrees in its three places; every source has its licence line; `Cargo.toml` has the
