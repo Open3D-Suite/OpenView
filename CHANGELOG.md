@@ -20,6 +20,9 @@ What changed for users in each version of OpenView, newest first.
   installs OpenView for everyone on the computer in `C:\Program Files\Open3D\OpenView`, with a shortcut
   in the Start menu; Windows asks for permission first. The Open3D launcher will use it in a coming
   version; the zip stays as it is.
+- **The window opens even when the `LOCALAPPDATA` variable is missing.** The data of the window then
+  goes to `AppData\Local\Open3D\OpenView` in your user folder. Before, it went beside `OpenView.exe`,
+  which cannot be written once OpenView is in Program Files, and OpenView opened in the browser instead.
 
 ## 0.2.1 — 16 November 2026
 

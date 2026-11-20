@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Where OpenView keeps its files: its `settings.json` in `%APPDATA%\Open3D\OpenView`, and the data of
 //! its built-in browser (WebView2) in `%LOCALAPPDATA%\Open3D\OpenView\webview`, or in `OpenView` inside
-//! the folders that `OPEN3D_SETTINGS_DIR` and `OPEN3D_DATA_DIR` name (D-042, D-044).
+//! the folders that `OPEN3D_SETTINGS_DIR` and `OPEN3D_DATA_DIR` name (D-042, D-044). With neither
+//! `OPEN3D_DATA_DIR` nor `LOCALAPPDATA`, the data goes to `AppData\Local\Open3D\OpenView` in the
+//! person's profile, where Windows keeps `%LOCALAPPDATA%`: never beside the exe ([`data_dir`]).
 //!
 //! At start, before the settings are read and before WebView2 writes anything, [`prepare`] copies the
 //! `settings.json` of an OpenView from before, in `%APPDATA%\OpenView`, into the new folder, once, and
@@ -27,7 +29,8 @@ pub const WEBVIEW: &str = "webview";
 pub struct Folders {
     /// OpenView's settings; `None` keeps them in memory only.
     pub settings_file: Option<PathBuf>,
-    /// The data of the built-in browser; `None` leaves it to WebView2.
+    /// The data of the built-in browser; `None` leaves it to WebView2, which keeps it beside the exe.
+    /// [`prepare`] always gives one.
     pub webview: Option<PathBuf>,
     /// Why the settings of an OpenView from before could not be copied, to tell the person.
     pub problem: Option<String>,
@@ -36,7 +39,21 @@ pub struct Folders {
 /// The folders of this run, once the old settings have been carried over. Call it first, before the
 /// settings are read and before WebView2 starts.
 pub fn prepare() -> Folders {
-    folders(old_folder(), open3d_settings::app_settings_dir(APP), open3d_settings::app_data_dir(APP))
+    folders(old_folder(), open3d_settings::app_settings_dir(APP), Some(data_dir()))
+}
+
+/// OpenView's data folder: `%LOCALAPPDATA%\Open3D\OpenView`, or `OpenView` in the folder that
+/// `OPEN3D_DATA_DIR` names. With neither variable, `AppData\Local\Open3D\OpenView` in the person's
+/// profile (`%USERPROFILE%`, or the folder Windows gives when that is not set either). Never `None`:
+/// WebView2 would then keep its data beside the exe, and in Program Files it cannot write there.
+pub fn data_dir() -> PathBuf {
+    data_dir_from(open3d_settings::app_data_dir(APP), std::env::home_dir())
+}
+
+/// [`data_dir`] from OpenView's folder in the Open3D data folder, if there is one, and the person's
+/// profile folder. With neither, the last resort is the temporary folder.
+fn data_dir_from(open3d: Option<PathBuf>, profile: Option<PathBuf>) -> PathBuf {
+    open3d.unwrap_or_else(|| profile.map_or_else(std::env::temp_dir, |dir| dir.join("AppData").join("Local")).join("Open3D").join(APP))
 }
 
 /// [`prepare`] with these folders: OpenView's old one, and its new settings and data folders.
@@ -306,6 +323,17 @@ mod tests {
         assert!(!new.exists());
         assert_eq!(carry(None, None), (None, None));
         assert_eq!(folders(None, None, None), Folders::default());
+    }
+
+    #[test]
+    fn without_the_open3d_data_folder_the_data_goes_to_the_profile() {
+        let (open3d, profile) = (PathBuf::from(r"D:\Data\OpenView"), PathBuf::from(r"C:\Users\user"));
+        assert_eq!(data_dir_from(Some(open3d.clone()), Some(profile.clone())), open3d);
+        assert_eq!(data_dir_from(None, Some(profile.clone())), profile.join("AppData").join("Local").join("Open3D").join(APP));
+        // Without a profile either: still a folder of the person's, never the one OpenView started in.
+        let last = data_dir_from(None, None);
+        assert_eq!(last, std::env::temp_dir().join("Open3D").join(APP));
+        assert!(last.is_absolute());
     }
 
     #[test]

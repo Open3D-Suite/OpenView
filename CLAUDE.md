@@ -31,7 +31,7 @@ as a change that makes it old.
     common lints; no file holds a path of somebody's computer
   - `cargo fmt --all --check`
   - `cargo clippy --workspace --all-targets --locked -- -D warnings`
-  - `cargo test --locked` (113 tests; none needs the Internet)
+  - `cargo test --locked` (115 tests; none needs the Internet)
   - `ruff format --check .` and `ruff check .`, for the Python in `tools/`
   - only with `-Full`: `cargo test --locked --test live -- --ignored` (6 tests that need the network)
 - CI: `.github/workflows/check.yml` runs `tools\check.ps1`, without `-Full`, on every push and pull request
@@ -77,7 +77,10 @@ as a change that makes it old.
   posts `lang` to `/api/settings`, which writes the file (`""` removes the key) and serves the page again
   in it. A write that fails is a notice the next page shows (`__NOTICES__`).
 - Its files, from `src/folders.rs`: `settings.json` in `%APPDATA%\Open3D\OpenView`, WebView2's data in
-  `%LOCALAPPDATA%\Open3D\OpenView\webview`; `OPEN3D_SETTINGS_DIR` and `OPEN3D_DATA_DIR` move them. First
+  `%LOCALAPPDATA%\Open3D\OpenView\webview`; `OPEN3D_SETTINGS_DIR` and `OPEN3D_DATA_DIR` move them. With
+  neither `OPEN3D_DATA_DIR` nor `LOCALAPPDATA`, WebView2's data goes to `AppData\Local\Open3D\OpenView`
+  in the profile (`folders::data_dir`), never beside the exe, where WebView2 cannot write in Program
+  Files. First
   in `window::run`, before the settings are read and WebView2 starts, `folders::carry_file` copies the old
   `%APPDATA%\OpenView\settings.json` there once, never over a file already there. Only that file: the old
   folder, with its `webview`, is left as it was, and WebView2 makes its data again. If the copy fails, that
@@ -96,6 +99,9 @@ as a change that makes it old.
 - Without WebView2 the page opens in the browser; the program ends when `/api/ping` stops and no job runs.
 - The old folder is `OpenView` in `APPDATA`: a test of the program sets `APPDATA`, `OPEN3D_SETTINGS_DIR`
   and `OPEN3D_DATA_DIR` to scratch folders, so it never reads or writes the real ones.
+- `tests/profile.rs` runs its own test binary again without `USERPROFILE`, `LOCALAPPDATA` and
+  `OPEN3D_DATA_DIR`, with `APPDATA` and `OPEN3D_SETTINGS_DIR` in scratch folders: setting variables
+  inside a test would need `unsafe`.
 - `Cargo.lock` holds the version too: after changing it, `--locked` commands fail until the lock is updated.
 - Debug builds and tests are optimised too (`[profile.dev]`): the image code is too slow otherwise.
 - Keys of `ui/i18n/` ending in `_html` go into the page with their markup; the others are escaped.
