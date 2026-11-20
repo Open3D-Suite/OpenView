@@ -10,11 +10,12 @@ pub mod extras;
 pub mod geom;
 pub mod hdri;
 pub mod links;
+// The language shared by every Open3D app: a copy of a common file. Its one call to Windows, for
+// the language of Windows, allows `unsafe` by name.
+pub mod open3d_settings;
 pub mod pano;
 pub mod service;
 pub mod settings;
-// `unsafe` is allowed in this module: it calls Windows to ask for the language of the user interface.
-#[allow(unsafe_code)]
 pub mod text;
 // `unsafe` is allowed in this module: it gives the file dialogs the app's window as a raw Windows handle.
 #[allow(unsafe_code)]

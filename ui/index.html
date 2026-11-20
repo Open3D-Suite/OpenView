@@ -489,6 +489,7 @@ input[type=range] { accent-color: var(--accent); width: 100%; }
 const $ = s => document.querySelector(s);
 const TOKEN = '__APP_TOKEN__';  // the app fills it in when it serves the page
 const T = __I18N__;  // the texts of the page's language (ui/i18n/*.json)
+const NOTICES = __NOTICES__;  // what the app has to tell when the page opens, in its language
 const LANG = document.documentElement.lang;
 const tf = (text, values) => text.replace(/\{(\w+)\}/g, (_, k) => values[k]);
 const api = (p, body) => fetch(p, body === undefined ? { headers: { 'X-Token': TOKEN } } : {
@@ -498,12 +499,14 @@ const api = (p, body) => fetch(p, body === undefined ? { headers: { 'X-Token': T
 let state = { items: [], settings: {} };
 const cardEls = new Map();
 
-function toast(msg) {
+function toast(msg, ms = 4200) {
   const t = document.createElement('div');
   t.className = 'toast'; t.textContent = msg;
   $('#toasts').append(t);
-  setTimeout(() => t.remove(), 4200);
+  setTimeout(() => t.remove(), ms);
 }
+// Shown longer: the window may still be opening.
+NOTICES.forEach(n => toast(n, 12000));
 
 /* ---------- tema ---------- */
 function applyTheme(t) {
@@ -517,7 +520,8 @@ $('#themeBtn').onclick = () => {
   applyTheme(next);
   saveSettings({ theme: next });
 };
-// The language is kept in the app's settings; the page is served again in the other one.
+// The language is the one every Open3D app shares: the app writes it there and serves the page
+// again in it (a language it could not save is a notice on the new page).
 $('#langBtn').onclick = async () => { await saveSettings({ lang: $('#langBtn').lang }); location.reload(); };
 
 /* ---------- añadir enlaces ---------- */

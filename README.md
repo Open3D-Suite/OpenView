@@ -55,7 +55,9 @@ default browser instead. A 16K panorama needs about 1.5 GB of free memory while 
    (for example as TIFF). **Clear finished** empties the list of what is done.
 
 The buttons at the top right switch the language (English or Spanish; at first it follows Windows)
-and the theme (light or dark; at first it follows Windows).
+and the theme (light or dark; at first it follows Windows). The language is the one the Open3D
+launcher and the other Open3D apps share: changing it here changes it for them too, the next time
+they start.
 
 ### Options
 
@@ -128,7 +130,8 @@ cancelled. For lighting, 4K–8K is plenty; the 16K JPG can stay as the sharp ba
 ### Other details
 
 If you close the window with downloads running, it asks first. The window remembers its size and
-place, the language, the theme and every option, in `%APPDATA%\OpenView\settings.json`. Everything
+place, the theme and every option, in `%APPDATA%\OpenView\settings.json`, and the language in
+`%APPDATA%\Open3D\settings.json`, which the Open3D apps share. Everything
 runs on your computer: no account, no telemetry, nothing is sent anywhere except the requests for
 the images themselves.
 

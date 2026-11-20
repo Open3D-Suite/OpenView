@@ -30,28 +30,25 @@ impl Lang {
         }
     }
 
-    /// Spanish when Windows is in Spanish, English otherwise.
-    #[cfg(windows)]
+    /// Spanish when Windows is in Spanish, English otherwise (D-052), as every Open3D app decides
+    /// it (`open3d_settings`).
     pub fn system() -> Lang {
-        #[link(name = "kernel32")]
-        unsafe extern "system" {
-            fn GetUserDefaultUILanguage() -> u16;
-        }
-        // SAFETY: a Win32 call without arguments that returns a language identifier.
-        let id = unsafe { GetUserDefaultUILanguage() };
-        // The low ten bits are the primary language; 0x0A is Spanish.
-        if id & 0x3ff == 0x0a { Lang::Es } else { Lang::En }
-    }
-
-    #[cfg(not(windows))]
-    pub fn system() -> Lang {
-        Lang::En
+        crate::open3d_settings::windows_language().into()
     }
 
     fn pick(self, en: &'static str, es: &'static str) -> &'static str {
         match self {
             Lang::En => en,
             Lang::Es => es,
+        }
+    }
+}
+
+impl From<crate::open3d_settings::Language> for Lang {
+    fn from(language: crate::open3d_settings::Language) -> Self {
+        match language {
+            crate::open3d_settings::Language::English => Lang::En,
+            crate::open3d_settings::Language::Spanish => Lang::Es,
         }
     }
 }
@@ -119,6 +116,14 @@ impl Lang {
             (Lang::Es, true) => {
                 format!("Hay {count} descargas sin terminar. Si cierras ahora se cancelarán. ¿Cerrar de todas formas?")
             }
+        }
+    }
+
+    /// Said when the language could not be written to the file every Open3D app shares.
+    pub fn language_not_shared(self, error: &str) -> String {
+        match self {
+            Lang::En => format!("The language could not be saved for the other Open3D apps: {error}"),
+            Lang::Es => format!("No se pudo guardar el idioma para las demás aplicaciones de Open3D: {error}"),
         }
     }
 

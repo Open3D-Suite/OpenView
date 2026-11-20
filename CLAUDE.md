@@ -15,6 +15,8 @@ as a change that makes it old.
 - `src/pano.rs`: downloads, tiles, crops, saving. `src/geom.rs`: the geometry of 360 images. `src/extras.rs`:
   north, ground patch, partial photos. `src/hdri.rs`: the HDRI converter.
 - `src/text.rs`: the program's own messages. `src/settings.rs`: the settings, in `%APPDATA%\OpenView`.
+  `src/open3d_settings.rs`: the language every Open3D app shares, with the cases its tests read
+  (`src/open3d_settings_cases.txt`).
 - `build.rs`: the exe's icon and file properties.
 
 ## Build and check
@@ -26,14 +28,15 @@ as a change that makes it old.
     common lints; no file holds a path of somebody's computer
   - `cargo fmt --all --check`
   - `cargo clippy --workspace --all-targets --locked -- -D warnings`
-  - `cargo test --locked` (84 tests; none needs the Internet)
+  - `cargo test --locked` (99 tests; none needs the Internet)
   - `ruff format --check .` and `ruff check .`, for the Python in `tools/`
   - only with `-Full`: `cargo test --locked --test live -- --ignored` (6 tests that need the network)
 - CI: `.github/workflows/check.yml` runs `tools\check.ps1`, without `-Full`, on every push and pull request
   to `main`, on GitHub's Windows runner with Python 3.14.
 - `.editorconfig`, `.gitattributes`, `rustfmt.toml`, `clippy.toml`, `ruff.toml`, `LICENSE`,
   `tools/check.ps1`, `tools/repo.py`, `tools/repo_package.py` and `tools/repo_release.py` are the same in
-  every Open3D repo. Do not change them here. No formatter touches `ui/`.
+  every Open3D repo, and `src/open3d_settings.rs` with `src/open3d_settings_cases.txt` in every repo that
+  has them. Do not change them here. No formatter touches `ui/`.
 
 ## Version and release
 
@@ -58,10 +61,17 @@ as a change that makes it old.
   and `/api/state` need the run's token in `X-Token`, and are refused when `Origin` is another site.
 - Every text of the page is a key of both files in `ui/i18n/`, written `{{key}}` in the markup or `T.key`
   in the script. A test fails when the files differ in keys or the page uses a key that has no text.
+- The language is the one every Open3D app shares, in `settings.json` (`%APPDATA%\Open3D`, or the folder
+  `OPEN3D_SETTINGS_DIR` names). At start `Settings::take_shared_language` puts its preference in `lang`;
+  with none, an `en` or `es` chosen here before is carried over once (`language_shared`), and otherwise
+  `lang` is `""`: Windows decides, Spanish if it is Spanish, else English. The page's language button
+  posts `lang` to `/api/settings`, which writes the file (`""` removes the key) and serves the page again
+  in it. A write that fails is a notice the next page shows (`__NOTICES__`).
 - Requests to the map service and the parsing of its JSON answers are in `src/service.rs`, and the forms
   of its links in `src/links.rs`: the service is not documented and may change without notice.
 - `unsafe` is denied. It is allowed by name, with its reason, in four places that call Windows or pass a
-  window handle: the `text`, `web` and `window` modules and `attach_console` in `src/main.rs`.
+  window handle: the `web` and `window` modules, `attach_console` in `src/main.rs` and
+  `user_interface_language` in `src/open3d_settings.rs`.
 - The code comes from the original OpenView by Daniel Castellanos (MIT): the page is its interface and the
   server keeps its routes and answers. `NOTICE` and `LICENSES/` stay in the repo and go into every zip.
 

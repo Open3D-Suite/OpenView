@@ -19,13 +19,13 @@ use std::time::{Duration, Instant};
 use image::RgbImage;
 use serde_json::{Map, Value, json};
 
-use crate::geom;
 use crate::hdri::{self, HdrFormat};
 use crate::links::{self, Kind};
 use crate::pano::{self, Control, Crop, Options, Step};
 use crate::service::{Client, PanoInfo};
 use crate::settings::{Settings, WindowPlace};
 use crate::text::{Lang, Msg};
+use crate::{geom, open3d_settings};
 
 const PAGE: &str = include_str!("../ui/index.html");
 const STRINGS_EN: &str = include_str!("../ui/i18n/en.json");
@@ -48,8 +48,9 @@ fn escape_html(text: &str) -> String {
     text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;")
 }
 
-/// The page in a language and a theme, carrying the session's token.
-pub fn page(lang: Lang, theme: &str, token: &str) -> String {
+/// The page in a language and a theme, carrying the session's token and the notices it shows when
+/// it opens.
+pub fn page(lang: Lang, theme: &str, token: &str, notices: &[String]) -> String {
     let texts = strings(lang);
     let mut out = String::with_capacity(PAGE.len() + 4096);
     let mut rest = PAGE;
@@ -75,7 +76,8 @@ pub fn page(lang: Lang, theme: &str, token: &str) -> String {
     }
     out.push_str(rest);
     let texts_json = serde_json::to_string(texts).unwrap_or_default().replace("</", "<\\/");
-    out.replace("__APP_TOKEN__", token).replace("__I18N__", &texts_json)
+    let notices_json = serde_json::to_string(notices).unwrap_or_else(|_| "[]".into()).replace("</", "<\\/");
+    out.replace("__APP_TOKEN__", token).replace("__I18N__", &texts_json).replace("__NOTICES__", &notices_json)
 }
 
 fn random_token() -> String {
@@ -276,6 +278,13 @@ struct Shared {
     base_url: String,
     state: Mutex<State>,
     settings: Mutex<Settings>,
+    /// Where `settings` are kept; `None` keeps them in memory only (tests).
+    settings_file: Option<PathBuf>,
+    /// The folder of `settings.json`, the language every Open3D app shares.
+    shared_dir: Option<PathBuf>,
+    /// What the page has to tell the person the next time it opens, such as a language that
+    /// could not be saved.
+    notices: Mutex<Vec<String>>,
     english: Client,
     spanish: Client,
     downloads: Mutex<Sender<(String, Options)>>,
@@ -295,17 +304,42 @@ pub struct Server {
 }
 
 impl Server {
-    /// Starts listening on a free port of 127.0.0.1.
+    /// Starts listening on a free port of 127.0.0.1, with the saved settings and the language
+    /// every Open3D app shares (`%APPDATA%\Open3D`, or the folder `OPEN3D_SETTINGS_DIR` names).
     pub fn start() -> Result<Server, String> {
+        Server::start_with(Settings::load(), Some(Settings::file()), open3d_settings::settings_dir())
+    }
+
+    /// [`Server::start`] with these settings, kept in `settings_file`, and the shared language in
+    /// `shared_dir`.
+    fn start_with(settings: Settings, settings_file: Option<PathBuf>, shared_dir: Option<PathBuf>) -> Result<Server, String> {
         let http = tiny_http::Server::http("127.0.0.1:0").map_err(|e| e.to_string())?;
         let port = http.server_addr().to_ip().map(|a| a.port()).ok_or("no port")?;
+        let server = Server::new(format!("http://127.0.0.1:{port}/"), settings, settings_file, shared_dir);
+        let listener = server.clone();
+        std::thread::spawn(move || {
+            for request in http.incoming_requests() {
+                let handler = listener.clone();
+                std::thread::spawn(move || handler.handle(request));
+            }
+        });
+        Ok(server)
+    }
+
+    /// The server, not listening yet, with its download worker. It takes the shared language in
+    /// first (`Settings::take_shared_language`); a language it could not carry over is a notice.
+    fn new(base_url: String, mut settings: Settings, settings_file: Option<PathBuf>, shared_dir: Option<PathBuf>) -> Server {
+        let carried = settings.take_shared_language(shared_dir.as_deref());
         let (tx, rx) = mpsc::channel::<(String, Options)>();
         let server = Server {
             shared: Arc::new(Shared {
                 token: random_token(),
-                base_url: format!("http://127.0.0.1:{port}/"),
+                base_url,
                 state: Mutex::new(State::default()),
-                settings: Mutex::new(Settings::load()),
+                settings: Mutex::new(settings),
+                settings_file,
+                shared_dir,
+                notices: Mutex::new(Vec::new()),
                 english: Client::with_language("en"),
                 spanish: Client::with_language("es"),
                 downloads: Mutex::new(tx),
@@ -316,20 +350,27 @@ impl Server {
                 next_id: Mutex::new(1),
             }),
         };
+        if let Err(error) = carried {
+            server.notify(server.lang().language_not_shared(&error));
+        }
         let worker = server.clone();
         std::thread::spawn(move || {
             for (id, options) in rx {
                 worker.download(&id, &options);
             }
         });
-        let listener = server.clone();
-        std::thread::spawn(move || {
-            for request in http.incoming_requests() {
-                let handler = listener.clone();
-                std::thread::spawn(move || handler.handle(request));
-            }
-        });
-        Ok(server)
+        server
+    }
+
+    /// Keeps a message for the page to show the next time it opens.
+    fn notify(&self, message: String) {
+        self.shared.notices.lock().unwrap().push(message);
+    }
+
+    fn save(&self, settings: &Settings) {
+        if let Some(file) = &self.shared.settings_file {
+            settings.save_to(file);
+        }
     }
 
     pub fn url(&self) -> &str {
@@ -359,7 +400,7 @@ impl Server {
     pub fn save_window(&self, place: WindowPlace) {
         let mut settings = self.shared.settings.lock().unwrap();
         settings.window = Some(place);
-        settings.save();
+        self.save(&settings);
     }
 
     /// Seconds since the page last said it is open.
@@ -772,14 +813,18 @@ impl Server {
         let _ = request.respond(response.into_response());
     }
 
+    /// The page, in the language and the theme of the settings, with the notices kept for it.
+    fn index(&self) -> String {
+        let settings = self.settings();
+        let theme = if matches!(settings.theme.as_str(), "light" | "dark") { settings.theme.as_str() } else { "" };
+        let notices = std::mem::take(&mut *self.shared.notices.lock().unwrap());
+        page(self.lang(), theme, &self.shared.token, &notices)
+    }
+
     fn get(&self, path: &str, query: &str, request: &tiny_http::Request) -> Reply {
         let last = path.rsplit('/').next().unwrap_or("").to_string();
         match path {
-            "/" | "/index.html" => {
-                let settings = self.settings();
-                let theme = if matches!(settings.theme.as_str(), "light" | "dark") { settings.theme.as_str() } else { "" };
-                Reply::Html(page(self.lang(), theme, &self.shared.token))
-            }
+            "/" | "/index.html" => Reply::Html(self.index()),
             "/api/state" => {
                 if self.allowed(request) {
                     Reply::Json(200, self.state_json())
@@ -955,18 +1000,13 @@ impl Server {
                 state.order.retain(|o| !finished.contains(o));
                 ok()
             }
-            "/api/settings" => {
-                let mut settings = self.shared.settings.lock().unwrap();
-                settings.apply_patch(data);
-                settings.save();
-                Reply::Json(200, serde_json::to_value(&*settings).unwrap_or(Value::Null))
-            }
+            "/api/settings" => self.post_settings(data),
             "/api/pick-folder" => {
                 let picked = self.pick_folder();
                 if let Some(folder) = &picked {
                     let mut settings = self.shared.settings.lock().unwrap();
                     settings.outdir = folder.clone();
-                    settings.save();
+                    self.save(&settings);
                 }
                 Reply::Json(200, json!({"path": picked}))
             }
@@ -994,6 +1034,21 @@ impl Server {
             }
             _ => Reply::Json(404, json!({"error": "not found"})),
         }
+    }
+
+    /// What the page changed in the settings. A language chosen on the page (`lang`) is also
+    /// written for every Open3D app (D-056); the page is then served again in it, and a write that
+    /// fails is a notice there.
+    fn post_settings(&self, data: &Value) -> Reply {
+        let mut settings = self.shared.settings.lock().unwrap();
+        settings.apply_patch(data);
+        if data.get("lang").and_then(Value::as_str) == Some(settings.lang.as_str())
+            && let Err(error) = settings.share_language(self.shared.shared_dir.as_deref())
+        {
+            self.notify(Lang::from_setting(&settings.lang).language_not_shared(&error));
+        }
+        self.save(&settings);
+        Reply::Json(200, serde_json::to_value(&*settings).unwrap_or(Value::Null))
     }
 
     fn post_crop(&self, id: &str, data: &Value) -> Reply {
@@ -1212,13 +1267,66 @@ mod tests {
 
     #[test]
     fn the_page_is_filled_in() {
-        let html = page(Lang::Es, "dark", "secret-token");
+        let html = page(Lang::Es, "dark", "secret-token", &[]);
         assert!(html.contains(r#"<html lang="es" data-theme="dark">"#));
         assert!(html.contains("secret-token") && !html.contains("__APP_TOKEN__") && !html.contains("__I18N__"));
+        assert!(!html.contains("__NOTICES__") && html.contains("const NOTICES = [];"));
         assert!(!html.contains("{{"), "a text was left unfilled");
         assert!(html.contains("Descarga tu primer panorama"));
-        let english = page(Lang::En, "", "t");
+        let english = page(Lang::En, "", "t", &["a </script> b".into()]);
         assert!(english.contains(r#"<html lang="en" data-theme="">"#) && english.contains("Download your first panorama"));
+        assert!(english.contains(r#"const NOTICES = ["a <\/script> b"];"#), "a notice cannot end the script");
+    }
+
+    /// A folder of its own for the shared `settings.json`, never the real `%APPDATA%\Open3D`;
+    /// removed first, so it is not there yet.
+    fn shared_folder(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("openview-web-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let _ = std::fs::remove_file(&dir);
+        dir
+    }
+
+    /// A server that does not listen, with these settings kept in memory only.
+    fn server(settings: Settings, shared_dir: &Path) -> Server {
+        Server::new("http://127.0.0.1:0/".into(), settings, None, Some(shared_dir.to_path_buf()))
+    }
+
+    #[test]
+    fn a_language_chosen_on_the_page_is_shared_and_served() {
+        use crate::open3d_settings::{Language, read_language};
+        let dir = shared_folder("chosen");
+        let server = server(Settings::default(), &dir);
+        assert!(!dir.exists(), "starting writes nothing");
+        server.post("/api/settings", &json!({"lang": "es"}));
+        assert_eq!(read_language(&dir), Some(Language::Spanish));
+        assert!(server.index().contains(r#"<html lang="es""#), "shown at once");
+        // Other settings leave the shared language alone.
+        server.post("/api/settings", &json!({"north": true, "lang": "fr"}));
+        assert_eq!((read_language(&dir), server.lang()), (Some(Language::Spanish), Lang::Es));
+        // "" follows Windows: the preference is taken out.
+        server.post("/api/settings", &json!({"lang": ""}));
+        assert_eq!((read_language(&dir), server.lang()), (None, Lang::system()));
+        assert!(server.index().contains(&format!(r#"<html lang="{}""#, Lang::system().code())));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_language_that_cannot_be_saved_is_told_on_the_page() {
+        let dir = shared_folder("blocked");
+        // The folder is a file: nothing can be written in it.
+        std::fs::write(&dir, b"in the way").unwrap();
+        // The Spanish chosen here before cannot be carried over: the page says so, once.
+        let server = server(Settings { lang: "es".into(), ..Settings::default() }, &dir);
+        let first = server.index();
+        assert!(first.contains(r#"<html lang="es""#) && first.contains("No se pudo guardar el idioma para las demás aplicaciones de Open3D: "));
+        assert!(server.index().contains("const NOTICES = [];"));
+        // Chosen on the page: shown at once, and the page says it was not saved for the others.
+        server.post("/api/settings", &json!({"lang": "en"}));
+        let next = server.index();
+        assert!(next.contains(r#"<html lang="en""#) && next.contains("The language could not be saved for the other Open3D apps: "));
+        assert!(!server.settings().language_shared);
+        let _ = std::fs::remove_file(&dir);
     }
 
     #[test]
@@ -1280,7 +1388,10 @@ mod tests {
 
     #[test]
     fn the_server_answers_only_its_own_page() {
-        let server = Server::start().expect("started");
+        // Never the real settings: these are kept in memory, and the shared language in a folder
+        // of the test's own.
+        let dir = shared_folder("server");
+        let server = Server::start_with(Settings::default(), None, Some(dir.clone())).expect("started");
         let agent: ureq::Agent = ureq::Agent::config_builder().http_status_as_error(false).build().into();
         let url = server.url().to_string();
         let page = agent.get(&url).call().unwrap().body_mut().read_to_string().unwrap();
@@ -1300,5 +1411,6 @@ mod tests {
         assert!(state["settings"]["outdir"].is_string());
         let missing = agent.get(&format!("{url}nothing")).call().unwrap();
         assert_eq!(missing.status().as_u16(), 404);
+        assert!(!dir.exists(), "starting and serving write nothing");
     }
 }

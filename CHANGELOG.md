@@ -2,6 +2,14 @@
 
 What changed for users in each version of OpenView, newest first.
 
+## In development
+
+- **The same language as the Open3D launcher and the other Open3D apps.** The language button at the
+  top now changes it for them too: they show it the next time they start. A language chosen in the
+  launcher or in another Open3D app shows here the next time OpenView starts. A language you had
+  chosen in OpenView is kept and passed on to them, unless one was already chosen there. If none was
+  ever chosen, OpenView still follows Windows: Spanish if Windows is in Spanish, English otherwise.
+
 ## 0.2.1 — 16 November 2026
 
 - **The program no longer names folders of the computer it was built on.** Earlier builds

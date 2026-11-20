@@ -1,0 +1,134 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+# The shared cases of the language preference of OPEN3D. The tests of its three implementations
+# (open3d_settings.rs, open3d_settings.py and open3d_settings.cpp) all read this file: on the same
+# input the three must give the same answer. The contract is common/settings.md in the OPEN3D root;
+# this file is a copy of common/settings/open3d_settings_cases.txt there.
+#
+# One case per line, its fields separated by "|", the spaces around a field left out. Empty lines and
+# lines that start with "#" are not cases.
+#
+#   windows | LANGID | language
+#       The language of Windows (D-052): the LANGID that GetUserDefaultUILanguage gives, in
+#       hexadecimal, and the language shown when there is no preference.
+#   read | settings.json | LANGID | preference | language
+#       Reading a settings.json: the preference it holds (en, es, or none) and the language shown
+#       with that language of Windows.
+#   write | settings.json before | language written | settings.json after
+#       Writing en, es or none (taking the preference out) into a settings.json, and the file
+#       afterwards, compared as JSON: the same keys with the same values, whatever the spaces and
+#       the order of the keys.
+#
+# A settings.json is "(no file)", "(empty)" or the bytes of the file, written as text where \n, \r,
+# \t, \\ and \xHH (one byte, in hexadecimal) are escapes.
+
+# English, and the other languages of Spain, are English.
+windows | 0x0409 | en
+windows | 0x0809 | en
+windows | 0x0403 | en
+windows | 0x042D | en
+windows | 0x0456 | en
+windows | 0x0416 | en
+windows | 0x040C | en
+windows | 0x0000 | en
+# Spanish of any country is Spanish: Spain, Spain with the traditional sort, Mexico, Argentina, the
+# United States, Latin America, and Spanish with no country.
+windows | 0x0C0A | es
+windows | 0x040A | es
+windows | 0x080A | es
+windows | 0x2C0A | es
+windows | 0x540A | es
+windows | 0x580A | es
+windows | 0x000A | es
+
+# No preference yet: the language of Windows decides.
+read | (no file)                                  | 0x0409 | none | en
+read | (no file)                                  | 0x0C0A | none | es
+read | (empty)                                    | 0x080A | none | es
+read | {}                                         | 0x0409 | none | en
+read | {}                                         | 0x0C0A | none | es
+read | {"theme":"dark"}                           | 0x0C0A | none | es
+
+# A preference wins over the language of Windows.
+read | {"language":"es"}                          | 0x0409 | es | es
+read | {"language":"en"}                          | 0x0C0A | en | en
+read | {"language": "es", "theme": "dark", "n": [1, 2.5e3, true, false, null, {"a": "\\"\\u00e9\\""}]} | 0x0409 | es | es
+read | \n\t {"language" : "es"} \r\n              | 0x0409 | es | es
+read | {"\\u006canguage":"\\u0065s"}              | 0x0409 | es | es
+read | {"language":"en","language":"es"}          | 0x0409 | es | es
+read | \xEF\xBB\xBF{"language":"es"}              | 0x0409 | es | es
+read | {"language":"es","x":"\xC3\xA9"}           | 0x0409 | es | es
+read | {"language":"es","x":"\\ud83d\\ude00\\/"}  | 0x0409 | es | es
+read | {"language":"es","x":-0.5E-2,"y":-0,"z":1e+2,"w":1e-400} | 0x0409 | es | es
+read | {"language":"es","x":[],"y":{},"z":[[{}]]} | 0x0409 | es | es
+
+# Any other value is no preference.
+read | {"language":"fr"}                          | 0x0C0A | none | es
+read | {"language":"ES"}                          | 0x0409 | none | en
+read | {"language":"es-ES"}                       | 0x0409 | none | en
+read | {"language":" es"}                         | 0x0409 | none | en
+read | {"language":""}                            | 0x0C0A | none | es
+read | {"language":null}                          | 0x0409 | none | en
+read | {"language":1}                             | 0x0409 | none | en
+read | {"language":true}                          | 0x0409 | none | en
+read | {"language":["es"]}                        | 0x0409 | none | en
+read | {"language":{"code":"es"}}                 | 0x0409 | none | en
+read | {"Language":"es"}                          | 0x0409 | none | en
+read | {"settings":{"language":"es"}}             | 0x0409 | none | en
+read | ["es"]                                     | 0x0409 | none | en
+read | "es"                                       | 0x0409 | none | en
+read | es                                         | 0x0409 | none | en
+read | null                                       | 0x0409 | none | en
+
+# A file that is not a JSON object in UTF-8 cannot be read: no preference.
+read | {"language":"es"                           | 0x0409 | none | en
+read | {"language":"es",}                         | 0x0409 | none | en
+read | {"language":"es"} x                        | 0x0409 | none | en
+read | {"language":"es"}{}                        | 0x0409 | none | en
+read | {"language":"es"}\x00                      | 0x0409 | none | en
+read | {"language":"es"} // es                    | 0x0409 | none | en
+read | {'language':'es'}                          | 0x0409 | none | en
+read | {language:"es"}                            | 0x0409 | none | en
+read | {"language" "es"}                          | 0x0409 | none | en
+read | {"language":"es" "x":1}                    | 0x0409 | none | en
+read | {1:"es"}                                   | 0x0409 | none | en
+read | \x20\n                                     | 0x0409 | none | en
+read | {"language":"es","x":01}                   | 0x0409 | none | en
+read | {"language":"es","x":1.}                   | 0x0409 | none | en
+read | {"language":"es","x":.5}                   | 0x0409 | none | en
+read | {"language":"es","x":+1}                   | 0x0409 | none | en
+read | {"language":"es","x":1e}                   | 0x0409 | none | en
+read | {"language":"es","x":0x10}                 | 0x0409 | none | en
+read | {"language":"es","x":NaN}                  | 0x0409 | none | en
+read | {"language":"es","x":-Infinity}            | 0x0409 | none | en
+read | {"language":"es","x":1e400}                | 0x0409 | none | en
+read | {"language":"es","x":tru}                  | 0x0409 | none | en
+read | {"language":"es","x":"\\x41"}              | 0x0409 | none | en
+read | {"language":"es","x":"\\u12"}              | 0x0409 | none | en
+read | {"language":"es","x":"a\tb"}               | 0x0409 | none | en
+read | {"language":"es","x":"\xFF"}               | 0x0409 | none | en
+read | {"language":"es","x":"\xC0\xAF"}           | 0x0409 | none | en
+read | {"language":"es","x":"\xED\xA0\x80"}       | 0x0409 | none | en
+read | {"language":"es","x":"\xC3"}               | 0x0409 | none | en
+read | \xEF\xBB\xBF\xEF\xBB\xBF{"language":"es"}  | 0x0409 | none | en
+read | \xFF\xFE{\x00}\x00                         | 0x0409 | none | en
+
+# Writing keeps every other key; "none" takes the preference out.
+write | (no file)                                 | es   | {"language":"es"}
+write | (no file)                                 | none | {}
+write | (empty)                                   | en   | {"language":"en"}
+write | {}                                        | en   | {"language":"en"}
+write | {"language":"en"}                         | es   | {"language":"es"}
+write | {"language":"es"}                         | none | {}
+write | {"theme":"dark","language":"es"}          | none | {"theme":"dark"}
+write | {"language":"en","theme":"dark","n":[1,2.5,{"a":null}],"s":"\\u00e9"} | es | {"theme":"dark","n":[1,2.5,{"a":null}],"s":"\\u00e9","language":"es"}
+write | {\n  "a": {\n    "b": [ 1, 2 ]\n  },\n  "language": "en"\n}\n | es | {"a":{"b":[1,2]},"language":"es"}
+write | {"x":1,"x":2}                             | es   | {"x":2,"language":"es"}
+write | {"\\u0078":true}                          | en   | {"x":true,"language":"en"}
+write | \xEF\xBB\xBF{"x":1}                       | es   | {"x":1,"language":"es"}
+write | {"language":"fr","x":"\xC3\xA9"}          | en   | {"language":"en","x":"\xC3\xA9"}
+
+# A file that cannot be read is replaced.
+write | not json                                  | es   | {"language":"es"}
+write | ["es"]                                    | en   | {"language":"en"}
+write | {"x":"\xFF"}                              | es   | {"language":"es"}
+write | {"x":1,}                                  | none | {}
