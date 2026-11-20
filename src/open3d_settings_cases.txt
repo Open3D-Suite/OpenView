@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-# The shared cases of the language preference of OPEN3D. The tests of its three implementations
-# (open3d_settings.rs, open3d_settings.py and open3d_settings.cpp) all read this file: on the same
-# input the three must give the same answer. The contract is common/settings.md in the OPEN3D root;
-# this file is a copy of common/settings/open3d_settings_cases.txt there.
+# The shared cases of what every OPEN3D app shares: the language preference and the folders of each
+# app. The tests of its three implementations (open3d_settings.rs, open3d_settings.py and
+# open3d_settings.cpp) all read this file: on the same input the three must give the same answer.
+# The contract is common/settings.md in the OPEN3D root; this file is a copy of
+# common/settings/open3d_settings_cases.txt there.
 #
 # One case per line, its fields separated by "|", the spaces around a field left out. Empty lines and
 # lines that start with "#" are not cases.
@@ -17,6 +18,18 @@
 #       Writing en, es or none (taking the preference out) into a settings.json, and the file
 #       afterwards, compared as JSON: the same keys with the same values, whatever the spaces and
 #       the order of the keys.
+#   folders | app | OPEN3D_SETTINGS_DIR | APPDATA | OPEN3D_DATA_DIR | LOCALAPPDATA | settings | data
+#       The folders of an app (D-042, D-044): the folder of its settings and the folder of
+#       everything else it writes, from the four variables. A variable is "(unset)", "(empty)" or
+#       its value; a folder is "(none)" or its parts, separated by "/".
+#   carry | old folder | new folder | what it does
+#       Carrying an app's old folder over to its new one (D-048, D-049): what the two hold before,
+#       and what carry_over does: "nothing", or "copied N" (N files copied, nothing left out). When
+#       it copies, the new folder then holds exactly what the old one holds; otherwise it is as it
+#       was. The old folder is always left as it was, nothing else is left beside the new one, and
+#       a second time does nothing. A folder is "(none)" when nothing has its name, "(file)" when a
+#       file has it, "(empty)", or its entries separated by ";": "name=text" is a file holding
+#       that text, "name/" an empty folder, and a "/" inside a name puts it in a folder.
 #
 # A settings.json is "(no file)", "(empty)" or the bytes of the file, written as text where \n, \r,
 # \t, \\ and \xHH (one byte, in hexadecimal) are escapes.
@@ -132,3 +145,33 @@ write | not json                                  | es   | {"language":"es"}
 write | ["es"]                                    | en   | {"language":"en"}
 write | {"x":"\xFF"}                              | es   | {"language":"es"}
 write | {"x":1,}                                  | none | {}
+
+# The variables name the folders in place of %APPDATA%\Open3D and %LOCALAPPDATA%\Open3D; the app's
+# own folder is in them.
+folders | OpenRef      | (unset)      | Roaming | (unset) | Local   | Roaming/Open3D/OpenRef     | Local/Open3D/OpenRef
+folders | OpenTools    | Suite        | Roaming | (unset) | Local   | Suite/OpenTools            | Local/Open3D/OpenTools
+folders | OpenTools    | (unset)      | Roaming | Cache   | Local   | Roaming/Open3D/OpenTools   | Cache/OpenTools
+folders | OpenFarm     | Open3D Suite | Roaming | Cache   | Local   | Open3D Suite/OpenFarm      | Cache/OpenFarm
+folders | OpenRef      | Suite        | (unset) | Cache   | (unset) | Suite/OpenRef              | Cache/OpenRef
+# An empty variable is not set; with neither variable there is no folder.
+folders | OpenView     | (empty)      | Roaming | (empty) | Local   | Roaming/Open3D/OpenView    | Local/Open3D/OpenView
+folders | Launcher     | (unset)      | Roaming | (unset) | (unset) | Roaming/Open3D/Launcher    | (none)
+folders | OpenGaussian | (unset)      | (unset) | (unset) | (unset) | (none)                     | (none)
+folders | OpenManager  | (unset)      | (empty) | (empty) | (empty) | (none)                     | (none)
+
+# The first start with the new folders copies the old one whole: files, folders inside, empty ones.
+carry | settings.json={"language":"es"}           | (none) | copied 1
+carry | app.ron={"settings": "(lang:es)"};recovery/autosave-4242.oref=PK;recovery/autosave-4242.json={"original":null} | (none) | copied 3
+carry | settings.json={};logs/opentools.log=started;clipboard/slot_1/objects.max=3ds;clipboard/slot_1/thumb.png=png;clipboard/materials/slot_2/materials.mat=mat;clipboard/slot_8/;theme/ | (none) | copied 5
+carry | Mis cosas/ñandú.txt=sí;a b.txt=;.hidden=x  | (none) | copied 3
+carry | (empty)                                    | (none) | copied 0
+carry | empty/                                     | (none) | copied 0
+# Nothing to copy: no old folder, or a file in its place.
+carry | (none)                                     | (none) | nothing
+carry | (file)                                     | (none) | nothing
+# A new folder that is there, even empty or a file, is never touched.
+carry | settings.json={"a":1}                      | (empty) | nothing
+carry | settings.json={"a":1}                      | settings.json={"b":2} | nothing
+carry | (none)                                     | settings.json={"b":2} | nothing
+carry | settings.json={"a":1}                      | (file)  | nothing
+carry | (empty)                                    | (empty) | nothing

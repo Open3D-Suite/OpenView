@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-//! The language shared by every OPEN3D app: one preference, in `settings.json` (D-050 to D-058).
+//! What every OPEN3D app shares: the language, one preference in `settings.json` (D-050 to D-058),
+//! and the folders each app keeps its own files in (D-042 to D-049).
 //!
 //! This file is a copy. Its original is `common/settings/open3d_settings.rs` in the OPEN3D root,
 //! which also holds the contract it keeps (`common/settings.md`): change it there, never here.
@@ -10,12 +11,20 @@
 //! value all mean "no preference yet", and then the language of Windows decides (Spanish if it is
 //! Spanish, otherwise English). Writing keeps every other key, and happens only when a person
 //! changes the language.
+//!
+//! An app keeps its settings in `%APPDATA%\Open3D\<app>` ([`app_settings_dir`]) and everything else
+//! it writes in `%LOCALAPPDATA%\Open3D\<app>` ([`app_data_dir`]), or in `<app>` inside the folders
+//! that `OPEN3D_SETTINGS_DIR` and `OPEN3D_DATA_DIR` name. At start, before it reads its settings, it
+//! copies the folders it used before into the new ones with [`carry_over`]: once, whole, and
+//! leaving the old ones as they were.
 
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
 /// The environment variable that, when set, names the folder in place of `%APPDATA%\Open3D`.
 pub const DIR_VARIABLE: &str = "OPEN3D_SETTINGS_DIR";
+/// The environment variable that, when set, names the folder in place of `%LOCALAPPDATA%\Open3D`.
+pub const DATA_DIR_VARIABLE: &str = "OPEN3D_DATA_DIR";
 /// The file's name in that folder.
 pub const FILE_NAME: &str = "settings.json";
 /// The key of the language in the file.
@@ -56,8 +65,211 @@ pub fn settings_dir() -> Option<PathBuf> {
 /// [`settings_dir`] from the values of `OPEN3D_SETTINGS_DIR` and `APPDATA`. An empty value counts
 /// as not set.
 pub fn settings_dir_from(variable: Option<OsString>, appdata: Option<OsString>) -> Option<PathBuf> {
+    open3d_dir(variable, appdata)
+}
+
+/// The folder of the other files of every app (caches, logs, recovery files, databases): the one
+/// `OPEN3D_DATA_DIR` names, otherwise `%LOCALAPPDATA%\Open3D`. `None` when neither variable is set.
+pub fn data_dir() -> Option<PathBuf> {
+    data_dir_from(std::env::var_os(DATA_DIR_VARIABLE), std::env::var_os("LOCALAPPDATA"))
+}
+
+/// [`data_dir`] from the values of `OPEN3D_DATA_DIR` and `LOCALAPPDATA`. An empty value counts as
+/// not set.
+pub fn data_dir_from(variable: Option<OsString>, localappdata: Option<OsString>) -> Option<PathBuf> {
+    open3d_dir(variable, localappdata)
+}
+
+/// The folder a variable names, otherwise `Open3D` in the folder `base` names.
+fn open3d_dir(variable: Option<OsString>, base: Option<OsString>) -> Option<PathBuf> {
     let set = |value: Option<OsString>| value.filter(|value| !value.is_empty()).map(PathBuf::from);
-    set(variable).or_else(|| set(appdata).map(|appdata| appdata.join("Open3D")))
+    set(variable).or_else(|| set(base).map(|base| base.join("Open3D")))
+}
+
+/// The folder of an app's own settings (D-042): `app` in [`settings_dir`], such as
+/// `%APPDATA%\Open3D\OpenRef`. `None` when there is no [`settings_dir`].
+pub fn app_settings_dir(app: &str) -> Option<PathBuf> {
+    settings_dir().map(|dir| dir.join(app))
+}
+
+/// The folder of everything else an app writes (D-044): `app` in [`data_dir`], such as
+/// `%LOCALAPPDATA%\Open3D\OpenRef`. `None` when there is no [`data_dir`].
+pub fn app_data_dir(app: &str) -> Option<PathBuf> {
+    data_dir().map(|dir| dir.join(app))
+}
+
+/// What [`carry_over`] did.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CarryOver {
+    /// Nothing to do: the new folder is there already, or there is no old folder.
+    Nothing,
+    /// The old folder was copied into the new one: how many files, and what was left out (a file
+    /// that could not be read, such as one in use, or a link), each with its path inside the old
+    /// folder and why.
+    Copied { files: usize, left_out: Vec<(PathBuf, String)> },
+    /// Nothing was put in place and the new folder is still missing, so the next start tries
+    /// again: why.
+    Failed(String),
+}
+
+/// Copies an app's old folder into its new one, the first time it starts with the new folders
+/// (D-048, D-049). Only when nothing has the name `new` and `old` is a folder: everything in `old`
+/// is copied into a new folder beside `new`, which takes the name `new` once the copy is complete,
+/// so a copy cut half way is never taken for a finished one. An existing `new` is never touched, and
+/// `old` is never changed, moved or deleted. Links inside `old` are not followed. A file that cannot
+/// be read is left out and said; the rest is still copied. Call it at start, before the app reads
+/// its settings. It never panics.
+pub fn carry_over(old: &Path, new: &Path) -> CarryOver {
+    if exists(new) || !old.is_dir() {
+        return CarryOver::Nothing;
+    }
+    let absolute = |path: &Path| std::path::absolute(path).unwrap_or_else(|_| path.to_path_buf());
+    if absolute(new).starts_with(absolute(old)) {
+        return CarryOver::Failed(format!("{} is inside {}", new.display(), old.display()));
+    }
+    let (Some(parent), Some(name)) = (new.parent(), new.file_name()) else {
+        return CarryOver::Failed(format!("{} cannot be a folder of its own", new.display()));
+    };
+    let parent = if parent.as_os_str().is_empty() { Path::new(".") } else { parent };
+    let temporary = match std::fs::create_dir_all(parent).and_then(|()| new_folder(parent, name)) {
+        Ok(temporary) => temporary,
+        Err(e) => return CarryOver::Failed(format!("couldn't create a folder in {} ({e})", parent.display())),
+    };
+    let mut copy = Copying { files: 0, left_out: Vec::new() };
+    match copy.tree(old, &temporary, Path::new("")).and_then(|()| put_in_place(&temporary, new)) {
+        Ok(()) => CarryOver::Copied { files: copy.files, left_out: copy.left_out },
+        Err(reason) => {
+            let _ = std::fs::remove_dir_all(&temporary);
+            // Another start of the same app may have put its own copy in place meanwhile.
+            if exists(new) { CarryOver::Nothing } else { CarryOver::Failed(reason) }
+        }
+    }
+}
+
+/// Whether something has the name `path`: a folder, a file or a link. When that cannot be told, it
+/// counts as there, so that it is never touched.
+fn exists(path: &Path) -> bool {
+    match std::fs::symlink_metadata(path) {
+        Ok(_) => true,
+        Err(e) => !matches!(e.kind(), std::io::ErrorKind::NotFound | std::io::ErrorKind::NotADirectory),
+    }
+}
+
+/// A new, empty folder of its own in `dir`, named after `name`, for [`carry_over`] to copy into.
+fn new_folder(dir: &Path, name: &OsStr) -> std::io::Result<PathBuf> {
+    let stamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |time| time.as_nanos());
+    for attempt in 0..100 {
+        let mut folder = name.to_os_string();
+        folder.push(format!(".carry-{}-{stamp}-{attempt}.tmp", std::process::id()));
+        let path = dir.join(folder);
+        match std::fs::create_dir(&path) {
+            Ok(()) => return Ok(path),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
+            Err(e) => return Err(e),
+        }
+    }
+    Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "every name tried is taken"))
+}
+
+/// Gives the finished copy its name, `new`. While nothing else has that name it tries a few times:
+/// another program, such as an antivirus, may hold the copy for a moment.
+fn put_in_place(temporary: &Path, new: &Path) -> Result<(), String> {
+    let mut last = String::new();
+    for attempt in 0..10 {
+        if attempt > 0 {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        if exists(new) {
+            return Err(format!("{} appeared while the copy was made", new.display()));
+        }
+        match std::fs::rename(temporary, new) {
+            Ok(()) => return Ok(()),
+            Err(e) => last = e.to_string(),
+        }
+    }
+    Err(format!("couldn't rename {} to {} ({last})", temporary.display(), new.display()))
+}
+
+/// The files [`carry_over`] has copied so far, and what it left out.
+struct Copying {
+    files: usize,
+    left_out: Vec<(PathBuf, String)>,
+}
+
+impl Copying {
+    /// Copies what the folder `from` holds into the empty folder `to`; `inside` is the path of
+    /// `from` inside the old folder. The error is one that stops the copy: the old folder itself
+    /// cannot be read, or something cannot be written.
+    fn tree(&mut self, from: &Path, to: &Path, inside: &Path) -> Result<(), String> {
+        let entries = match std::fs::read_dir(from) {
+            Ok(entries) => entries,
+            Err(e) if inside.as_os_str().is_empty() => return Err(format!("couldn't read {} ({e})", from.display())),
+            Err(e) => {
+                self.left_out.push((inside.to_path_buf(), e.to_string()));
+                return Ok(());
+            }
+        };
+        for entry in entries {
+            let entry = match entry {
+                Ok(entry) => entry,
+                Err(e) => {
+                    self.left_out.push((inside.to_path_buf(), e.to_string()));
+                    continue;
+                }
+            };
+            let name = entry.file_name();
+            let (path, target) = (inside.join(&name), to.join(&name));
+            match entry.file_type() {
+                Ok(kind) if kind.is_dir() => {
+                    std::fs::create_dir(&target).map_err(|e| couldnt_write(&target, &e))?;
+                    self.tree(&entry.path(), &target, &path)?;
+                }
+                Ok(kind) if kind.is_file() => match copy_file(&entry.path(), &target)? {
+                    None => self.files += 1,
+                    Some(why) => self.left_out.push((path, why)),
+                },
+                Ok(_) => self.left_out.push((path, "not a plain file or folder, so not copied".to_string())),
+                Err(e) => self.left_out.push((path, e.to_string())),
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Copies the file `from` into the new file `to`, with its contents and the time it was last
+/// changed. `Ok(Some(why))` when `from` cannot be read; then `to` is not left behind. The error is
+/// one of writing, which stops the copy. `from` is opened as other programs may still use it.
+fn copy_file(from: &Path, to: &Path) -> Result<Option<String>, String> {
+    use std::io::{Read, Write};
+    let mut source = match std::fs::File::open(from) {
+        Ok(source) => source,
+        Err(e) => return Ok(Some(e.to_string())),
+    };
+    let modified = source.metadata().and_then(|metadata| metadata.modified()).ok();
+    let mut target = std::fs::OpenOptions::new().write(true).create_new(true).open(to).map_err(|e| couldnt_write(to, &e))?;
+    let mut buffer = vec![0; 1 << 16];
+    loop {
+        let read = match source.read(&mut buffer) {
+            Ok(0) => break,
+            Ok(read) => read,
+            Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            Err(e) => {
+                drop(target);
+                let _ = std::fs::remove_file(to);
+                return Ok(Some(e.to_string()));
+            }
+        };
+        target.write_all(buffer.get(..read).unwrap_or_default()).map_err(|e| couldnt_write(to, &e))?;
+    }
+    if let Some(modified) = modified {
+        let _ = target.set_modified(modified);
+    }
+    target.sync_all().map_err(|e| couldnt_write(to, &e))?;
+    Ok(None)
+}
+
+fn couldnt_write(path: &Path, error: &std::io::Error) -> String {
+    format!("couldn't write {} ({error})", path.display())
 }
 
 /// The language to show: the preference in `dir`, or the language of Windows when there is none.
@@ -353,5 +565,188 @@ mod tests {
     #[test]
     fn without_a_folder_windows_decides() {
         assert_eq!(language(None), windows_language());
+    }
+
+    /// The value of a variable in a `folders` case.
+    fn variable(field: &str) -> Option<OsString> {
+        match field {
+            "(unset)" => None,
+            "(empty)" => Some(OsString::new()),
+            value => Some(OsString::from(value)),
+        }
+    }
+
+    #[test]
+    fn the_folders_of_an_app() {
+        for (line, fields) in cases("folders") {
+            let folder = |field: &str| (field != "(none)").then(|| field.split('/').collect::<PathBuf>());
+            let app = fields[0];
+            let settings = settings_dir_from(variable(fields[1]), variable(fields[2])).map(|dir| dir.join(app));
+            let data = data_dir_from(variable(fields[3]), variable(fields[4])).map(|dir| dir.join(app));
+            assert_eq!(settings, folder(fields[5]), "line {line}: the settings folder");
+            assert_eq!(data, folder(fields[6]), "line {line}: the data folder");
+        }
+    }
+
+    /// Makes at `path` what a field of a `carry` case stands for.
+    fn make(path: &Path, field: &str) {
+        match field {
+            "(none)" => {}
+            "(file)" => {
+                std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+                std::fs::write(path, b"a file").unwrap();
+            }
+            "(empty)" => std::fs::create_dir_all(path).unwrap(),
+            entries => {
+                std::fs::create_dir_all(path).unwrap();
+                for entry in entries.split(';') {
+                    match entry.split_once('=') {
+                        Some((name, text)) => {
+                            let file = path.join(name);
+                            std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+                            std::fs::write(file, text).unwrap();
+                        }
+                        None => std::fs::create_dir_all(path.join(entry)).unwrap(),
+                    }
+                }
+            }
+        }
+    }
+
+    /// Everything at `path`, by its path inside it with "/" ("" for `path` itself): a file with its
+    /// bytes, a folder with none. Empty when nothing has the name `path`.
+    fn snapshot(path: &Path) -> std::collections::BTreeMap<String, Option<Vec<u8>>> {
+        fn walk(path: &Path, key: String, found: &mut std::collections::BTreeMap<String, Option<Vec<u8>>>) {
+            let Ok(metadata) = std::fs::symlink_metadata(path) else { return };
+            if !metadata.is_dir() {
+                found.insert(key, Some(std::fs::read(path).unwrap()));
+                return;
+            }
+            found.insert(key.clone(), None);
+            for entry in std::fs::read_dir(path).unwrap() {
+                let entry = entry.unwrap();
+                let name = entry.file_name().to_string_lossy().into_owned();
+                walk(&entry.path(), if key.is_empty() { name } else { format!("{key}/{name}") }, found);
+            }
+        }
+        let mut found = std::collections::BTreeMap::new();
+        walk(path, String::new(), &mut found);
+        found
+    }
+
+    /// The names in a folder; none when it is missing.
+    fn names_in(dir: &Path) -> Vec<String> {
+        std::fs::read_dir(dir)
+            .map_or_else(|_| Vec::new(), |entries| entries.map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned()).collect())
+    }
+
+    #[test]
+    fn carrying_the_old_folder_over() {
+        for (line, fields) in cases("carry") {
+            let scratch = Scratch::new(&format!("carry-{line}"));
+            let (old, target) = (scratch.0.join("old"), scratch.0.join("target"));
+            let new = target.join("new");
+            make(&old, fields[0]);
+            make(&new, fields[1]);
+            let (old_before, new_before) = (snapshot(&old), snapshot(&new));
+            let expected = match fields[2].split_once(' ') {
+                Some(("copied", files)) => CarryOver::Copied { files: files.parse().unwrap(), left_out: Vec::new() },
+                _ if fields[2] == "nothing" => CarryOver::Nothing,
+                _ => panic!("line {line}: unknown outcome {}", fields[2]),
+            };
+            assert_eq!(carry_over(&old, &new), expected, "line {line}");
+            assert_eq!(snapshot(&old), old_before, "line {line}: the old folder is left as it was");
+            let copied = matches!(expected, CarryOver::Copied { .. });
+            assert_eq!(snapshot(&new), if copied { old_before.clone() } else { new_before.clone() }, "line {line}: the new folder");
+            let left: Vec<String> = if snapshot(&new).is_empty() { vec![] } else { vec!["new".into()] };
+            assert_eq!(names_in(&target), left, "line {line}: nothing else beside the new folder");
+            // The next start finds the new folder and does nothing.
+            let after = snapshot(&new);
+            assert_eq!(carry_over(&old, &new), CarryOver::Nothing, "line {line}: once only");
+            assert_eq!((snapshot(&old), snapshot(&new)), (old_before, after), "line {line}");
+        }
+    }
+
+    #[test]
+    fn a_copy_that_cannot_be_made_leaves_nothing_and_says_why() {
+        let scratch = Scratch::new("carry-fail");
+        let old = scratch.0.join("old");
+        make(&old, "settings.json={}");
+        // The folder the new one goes in is a file.
+        let blocked = scratch.0.join("blocked");
+        std::fs::write(&blocked, b"a file").unwrap();
+        let outcome = carry_over(&old, &blocked.join("new"));
+        assert!(matches!(&outcome, CarryOver::Failed(reason) if !reason.is_empty()), "{outcome:?}");
+        assert_eq!(std::fs::read(&blocked).unwrap(), b"a file");
+        assert_eq!(snapshot(&old).len(), 2);
+        let mut names = scratch.names();
+        names.sort();
+        assert_eq!(names, ["blocked", "old"]);
+        // A new folder inside the old one would copy itself.
+        let inside = old.join("deeper").join("new");
+        assert!(matches!(carry_over(&old, &inside), CarryOver::Failed(_)));
+        assert_eq!(names_in(&old), ["settings.json"]);
+    }
+
+    #[test]
+    fn the_time_a_file_was_changed_is_kept() {
+        let scratch = Scratch::new("carry-time");
+        let old = scratch.0.join("old");
+        make(&old, "logs/opentools.log=line");
+        let file = std::fs::File::options().write(true).open(old.join("logs").join("opentools.log")).unwrap();
+        let then = std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000);
+        file.set_modified(then).unwrap();
+        drop(file);
+        let new = scratch.0.join("new");
+        assert_eq!(carry_over(&old, &new), CarryOver::Copied { files: 1, left_out: vec![] });
+        assert_eq!(std::fs::metadata(new.join("logs").join("opentools.log")).unwrap().modified().unwrap(), then);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_file_in_use_is_copied_and_one_that_cannot_be_read_is_left_out() {
+        use std::io::Write;
+        use std::os::windows::fs::OpenOptionsExt;
+        let scratch = Scratch::new("carry-in-use");
+        let old = scratch.0.join("old");
+        make(&old, "settings.json={};logs/app.log=start;clipboard/slot_1/objects.max=max");
+        // A log another program is still writing can be read; a file it holds for itself cannot.
+        let mut log = std::fs::OpenOptions::new().append(true).open(old.join("logs").join("app.log")).unwrap();
+        log.write_all(b" more").unwrap();
+        let held = std::fs::OpenOptions::new().read(true).share_mode(0).open(old.join("clipboard").join("slot_1").join("objects.max")).unwrap();
+        let new = scratch.0.join("new");
+        let outcome = carry_over(&old, &new);
+        drop((log, held));
+        let CarryOver::Copied { files, left_out } = outcome else { panic!("{outcome:?}") };
+        assert_eq!(files, 2);
+        assert_eq!(left_out.iter().map(|(path, _)| path.clone()).collect::<Vec<_>>(), [Path::new("clipboard").join("slot_1").join("objects.max")]);
+        assert!(!left_out[0].1.is_empty());
+        assert_eq!(std::fs::read(new.join("logs").join("app.log")).unwrap(), b"start more");
+        assert_eq!(names_in(&new.join("clipboard").join("slot_1")), Vec::<String>::new());
+        assert_eq!(std::fs::read(old.join("clipboard").join("slot_1").join("objects.max")).unwrap(), b"max");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn a_link_inside_the_old_folder_is_not_followed() {
+        let scratch = Scratch::new("carry-link");
+        let (old, elsewhere) = (scratch.0.join("old"), scratch.0.join("elsewhere"));
+        make(&old, "settings.json={}");
+        make(&elsewhere, "big.bin=far away");
+        // A junction needs no administrator rights.
+        let made = std::process::Command::new("cmd")
+            .args(["/d", "/c", "mklink", "/J"])
+            .arg(old.join("link"))
+            .arg(&elsewhere)
+            .stdout(std::process::Stdio::null())
+            .status()
+            .unwrap();
+        assert!(made.success());
+        let new = scratch.0.join("new");
+        let outcome = carry_over(&old, &new);
+        let CarryOver::Copied { files: 1, left_out } = outcome else { panic!("{outcome:?}") };
+        assert_eq!(left_out.iter().map(|(path, _)| path.clone()).collect::<Vec<_>>(), [PathBuf::from("link")]);
+        assert_eq!(names_in(&new), ["settings.json"]);
+        assert_eq!(names_in(&elsewhere), ["big.bin"]);
     }
 }
