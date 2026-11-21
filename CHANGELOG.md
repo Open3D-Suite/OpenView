@@ -2,7 +2,7 @@
 
 What changed for users in each version of OpenView, newest first.
 
-## In development
+## 0.3.0 — 21 November 2026
 
 - **The same language as the Open3D launcher and the other Open3D apps.** The language button at the
   top now changes it for them too: they show it the next time they start. A language chosen in the
