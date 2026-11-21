@@ -8,12 +8,16 @@ What changed for users in each version of OpenView, newest first.
   top now changes it for them too: they show it the next time they start. A language chosen in the
   launcher or in another Open3D app shows here the next time OpenView starts. A language you had
   chosen in OpenView is kept and passed on to them, unless one was already chosen there. If none was
-  ever chosen, OpenView still follows Windows: Spanish if Windows is in Spanish, English otherwise.
+  ever chosen, OpenView still follows Windows: Spanish if Windows is in Spanish, English otherwise. If
+  the language cannot be saved for them, a notice in the window says so.
 - **OpenView's files move to the Open3D folders:** its settings to `%APPDATA%\Open3D\OpenView`, the data
   of its window to `%LOCALAPPDATA%\Open3D\OpenView`. The first time the new version starts it copies your
   settings from `%APPDATA%\OpenView`, so the folder, the format, the options, the theme and the window's
   place stay as they were. The data of the window is not copied: it is made again, and nothing in it has
   to be set up. The old folder is left as it was, and an older OpenView still finds its settings there.
+  If your settings cannot be copied, OpenView uses the old folder that time, says so, and tries again at
+  the next start. Opened from a portable Open3D launcher, OpenView keeps its files and its language
+  inside the launcher's folder instead.
 - **Nothing else to install.** The Visual C++ runtime is now inside `OpenView.exe`, so it starts on a
   Windows that has no Visual C++ Redistributable.
 - **An installer is on its way.** Each release also carries `openview-<version>-windows-x64.msi`, which
