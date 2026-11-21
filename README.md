@@ -1,8 +1,8 @@
 # OpenView
 
 Download 360 panoramas and photos from map applications at **full resolution**, look around them,
-cut ordinary photos out of them and turn them into HDRIs. A single Windows program, no install, no
-account. Part of the [Open3D](https://github.com/carlesllavata/Open3D) suite of open-source tools
+cut ordinary photos out of them and turn them into HDRIs. A single Windows program, nothing else to
+install, no account. Part of the [Open3D](https://github.com/carlesllavata/Open3D) suite of open-source tools
 for 3D work, based on the original [OpenView](https://github.com/AdanCastellanos/OpenView) by Daniel
 Castellanos (see [Credits](#credits)).
 
@@ -21,23 +21,30 @@ A panorama is saved as a standard **2:1 equirectangular** image, ready for any e
 
 ## Install
 
-Two ways, and nothing else is needed (no Python, no runtime):
+Nothing else is needed (no Python, no runtime):
 
-- **With the [Open3D launcher](https://github.com/carlesllavata/Open3D)**, version 0.3.0 or later:
-  press *Install* on OpenView's card. It goes in `%LOCALAPPDATA%\Programs\Open3D\OpenView`, with
-  shortcuts in the Start menu and on the desktop, and the launcher updates it and removes it.
-- **By hand**: download `openview-<version>-windows-x64.zip` from the
-  [releases page](https://github.com/carlesllavata/OpenView/releases/latest), unzip it anywhere and
-  run `OpenView.exe`. To remove it, delete the folder.
+- **With the [Open3D launcher](https://github.com/carlesllavata/Open3D)**, version 0.4.0 or later:
+  press *Install* on OpenView's card. The launcher installs OpenView for everyone on the computer, in
+  `C:\Program Files\Open3D\OpenView`, with a shortcut in the Start menu, and updates it and removes
+  it. Windows asks for permission at each install and each update. A copy an older launcher put in
+  your user folder goes once the new one is installed. A portable launcher keeps OpenView inside its
+  own folder instead, and asks nothing.
+- **By hand**: each release on the
+  [releases page](https://github.com/carlesllavata/OpenView/releases/latest) has
+  `openview-<version>-windows-x64.msi`, which installs the same way, with the same permission prompt
+  (remove it from *Installed apps* in Windows' Settings), and `openview-<version>-windows-x64.zip`,
+  which needs no install: unzip it anywhere and run `OpenView.exe` (to remove it, delete the folder).
 
-Removing OpenView either way keeps its settings in `%APPDATA%\Open3D\OpenView` and the data of its
-window in `%LOCALAPPDATA%\Open3D\OpenView`; delete those folders too if you want them gone. Version
-0.2.1 and earlier kept both in `%APPDATA%\OpenView`: the first start of a newer version copies the
-settings to the new folder and leaves the old one as it was, so that one can go too.
+Removing OpenView keeps its settings in `%APPDATA%\Open3D\OpenView` and the data of its window in
+`%LOCALAPPDATA%\Open3D\OpenView`. The launcher can delete them too when it removes OpenView (a box in
+its dialog); otherwise delete those folders if you want them gone. Version 0.2.1 and earlier kept both
+in `%APPDATA%\OpenView`: the first start of a newer version copies the settings to the new folder and
+leaves the old one as it was, so that one can go too.
 
-The program is not code-signed, so the first time Windows may show "Windows protected your PC":
-choose *More info* and then *Run anyway*. `SHA256SUMS.txt` on the release page lets you check the
-download.
+OpenView and its installer are not signed yet, so Windows' permission prompt says "Unknown
+publisher", and the first time you open a downloaded copy Windows may show "Windows protected your
+PC": choose *More info* and then *Run anyway*. `SHA256SUMS.txt` on the release page lets you check the
+downloads.
 
 Windows 10 or 11, 64-bit. The window uses WebView2, the web engine built into Windows (it comes with
 Windows 11 and with current Windows 10). It does not sign in to any account, does not sync anything
