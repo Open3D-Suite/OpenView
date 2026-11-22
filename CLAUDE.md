@@ -66,6 +66,8 @@ as a change that makes it old.
 
 ## Rules of this code
 
+- A bug that is fixed comes with a test that fails without the fix, and new logic comes with its tests.
+  The interface is tried by hand before a release.
 - The page reaches the program only through the local server, on `127.0.0.1` and a free port. Every POST
   and `/api/state` need the run's token in `X-Token`, and are refused when `Origin` is another site.
 - Every text of the page is a key of both files in `ui/i18n/`, written `{{key}}` in the markup or `T.key`
