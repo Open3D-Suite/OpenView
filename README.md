@@ -2,7 +2,7 @@
 
 Download 360 panoramas and photos from map applications at **full resolution**, look around them,
 cut ordinary photos out of them and turn them into HDRIs. A single Windows program, nothing else to
-install, no account. Part of the [Open3D](https://github.com/carlesllavata/Open3D) suite of open-source tools
+install, no account. Part of the [Open3D](https://github.com/Open3D-Suite/Open3D) suite of open-source tools
 for 3D work, based on the original [OpenView](https://github.com/AdanCastellanos/OpenView) by Daniel
 Castellanos (see [Credits](#credits)).
 
@@ -23,14 +23,14 @@ A panorama is saved as a standard **2:1 equirectangular** image, ready for any e
 
 Nothing else is needed (no Python, no runtime):
 
-- **With the [Open3D launcher](https://github.com/carlesllavata/Open3D)**, version 0.4.0 or later:
+- **With the [Open3D launcher](https://github.com/Open3D-Suite/Open3D)**, version 0.4.0 or later:
   press *Install* on OpenView's card. The launcher installs OpenView for everyone on the computer, in
   `C:\Program Files\Open3D\OpenView`, with a shortcut in the Start menu, and updates it and removes
   it. Windows asks for permission at each install and each update. A copy an older launcher put in
   your user folder goes once the new one is installed. A portable launcher keeps OpenView inside its
   own folder instead, and asks nothing.
 - **By hand**: each release on the
-  [releases page](https://github.com/carlesllavata/OpenView/releases/latest) has
+  [releases page](https://github.com/Open3D-Suite/OpenView/releases/latest) has
   `openview-<version>-windows-x64.msi`, which installs the same way, with the same permission prompt
   (remove it from *Installed apps* in Windows' Settings), and `openview-<version>-windows-x64.zip`,
   which needs no install: unzip it anywhere and run `OpenView.exe` (to remove it, delete the folder).

@@ -5,7 +5,7 @@ version = "0.3.0"
 edition = "2024"
 description = "Download 360 panoramas and photos from map applications at full resolution, with a viewer, crops and HDRI"
 license = "GPL-3.0-or-later"
-repository = "https://github.com/carlesllavata/OpenView"
+repository = "https://github.com/Open3D-Suite/OpenView"
 publish = false
 build = "build.rs"
 
