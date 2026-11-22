@@ -54,14 +54,14 @@ body {
 button { font: inherit; color: inherit; cursor: pointer; }
 .wrap { max-width: 980px; margin: 0 auto; padding: 28px 24px 120px; }
 
-/* cabecera */
+/* header */
 header { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
 .logo { width: 44px; height: 44px; flex: none; }
 h1 { font: 600 22px/1.2 "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; margin: 0; letter-spacing: -.01em; }
 .sub { color: var(--muted); margin: 2px 0 0; }
 .hdri-open { margin-left: auto; }
 
-/* fechas */
+/* dates */
 .dates { grid-column: 1 / -1; border-top: 1px solid var(--border); padding: 10px 14px 12px; display: flex; gap: 10px; align-items: center; min-width: 0; }
 .dates .lbl { color: var(--muted); font-size: 12.5px; flex: none; }
 .dates .strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; min-width: 0; scrollbar-width: thin; }
@@ -114,7 +114,7 @@ input[type=range] { accent-color: var(--accent); width: 100%; }
   .pv { border-right: 0; border-bottom: 1px solid var(--border); }
 }
 
-/* entrada */
+/* input */
 .add {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   box-shadow: var(--shadow); padding: 6px; display: flex; gap: 6px; align-items: center;
@@ -145,7 +145,7 @@ input[type=range] { accent-color: var(--accent); width: 100%; }
 .btn.icon { padding: 8px; }
 .btn.lg { padding: 11px 18px; font-size: 15px; border-radius: 11px; }
 
-/* ajustes */
+/* settings */
 .settings {
   display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px;
   margin: 18px 0 22px; padding: 12px 14px; background: var(--surface);
@@ -168,7 +168,7 @@ input[type=range] { accent-color: var(--accent); width: 100%; }
 .switch input:checked { background: var(--accent); }
 .switch input:checked::after { transform: translateX(16px); }
 
-/* lista */
+/* list */
 .list-head { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 10px; }
 .list-head h2 { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin: 0; }
 .cards { display: grid; gap: 12px; }
@@ -226,7 +226,7 @@ input[type=range] { accent-color: var(--accent); width: 100%; }
 .errbox { background: var(--danger-soft); color: var(--danger); border-radius: 9px; padding: 8px 10px; font-size: 13px; white-space: pre-line; }
 .link { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* vacío */
+/* empty */
 .empty { text-align: center; padding: 48px 20px 30px; color: var(--muted); }
 .empty svg { color: var(--accent); margin-bottom: 8px; }
 .empty h3 { color: var(--text); font-size: 17px; margin: 6px 0 14px; font-weight: 600; }
@@ -236,7 +236,7 @@ input[type=range] { accent-color: var(--accent); width: 100%; }
 .step p { margin: 0; font-size: 13px; }
 .step b { color: var(--text); }
 
-/* barra inferior */
+/* bottom bar */
 .dock {
   position: fixed; left: 0; right: 0; bottom: 0; padding: 14px 24px;
   background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(12px);
@@ -247,7 +247,7 @@ input[type=range] { accent-color: var(--accent); width: 100%; }
 .dock .sum { color: var(--muted); font-size: 13px; }
 .dock .sp { flex: 1; }
 
-/* visor */
+/* viewer */
 .viewer { position: fixed; inset: 0; background: rgba(0,0,0,.86); display: none; z-index: 20; }
 .viewer.show { display: block; }
 .viewer canvas { width: 100%; height: 100%; display: block; cursor: grab; touch-action: none; }
@@ -282,7 +282,7 @@ input[type=range] { accent-color: var(--accent); width: 100%; }
 .cstatus .btn { background: rgba(255,255,255,.1); color: #fff; border-color: rgba(255,255,255,.2); padding: 5px 10px; }
 .vhelp { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,.8); font-size: 12.5px; background: rgba(0,0,0,.45); padding: 6px 12px; border-radius: 99px; }
 
-/* avisos */
+/* notices */
 .toasts { position: fixed; bottom: 84px; right: 16px; display: grid; gap: 8px; z-index: 30; }
 .toast { background: var(--text); color: var(--bg); padding: 10px 14px; border-radius: 10px; font-size: 13px; box-shadow: var(--shadow); max-width: 360px; animation: pop .2s; }
 
@@ -508,11 +508,11 @@ function toast(msg, ms = 4200) {
 // Shown longer: the window may still be opening.
 NOTICES.forEach(n => toast(n, 12000));
 
-/* ---------- tema ---------- */
+/* ---------- theme ---------- */
 function applyTheme(t) {
   if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
 }
-// El tema se guarda en los ajustes de la app (la app ya lo pone en <html> al servir la página)
+// The theme is kept in the app's settings (the app already sets it on <html> when it serves the page)
 $('#themeBtn').onclick = () => {
   const dark = matchMedia('(prefers-color-scheme: dark)').matches;
   const cur = document.documentElement.dataset.theme || (dark ? 'dark' : 'light');
@@ -524,7 +524,7 @@ $('#themeBtn').onclick = () => {
 // again in it (a language it could not save is a notice on the new page).
 $('#langBtn').onclick = async () => { await saveSettings({ lang: $('#langBtn').lang }); location.reload(); };
 
-/* ---------- añadir enlaces ---------- */
+/* ---------- adding links ---------- */
 function extractLinks(text) {
   const urls = text.match(/https?:\/\/[^\s"'<>]+/g);
   if (urls) return urls;
@@ -548,7 +548,7 @@ document.addEventListener('paste', e => {
   if (/https?:\/\//.test(text)) addLinks(text);
 });
 
-/* ---------- ajustes ---------- */
+/* ---------- settings ---------- */
 function renderSettings(s) {
   $('#pathBtn').textContent = s.outdir;
   $('#pathBtn').title = s.outdir;
@@ -578,7 +578,7 @@ $('#pathBtn').onclick = pick;
 $('#openDirBtn').onclick = () => api('/api/open', { what: 'outdir' });
 $('#clearBtn').onclick = async () => { await api('/api/clear-done', {}); refresh(); };
 
-/* ---------- tarjetas ---------- */
+/* ---------- cards ---------- */
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 function fmtDate(d) {
   if (!d) return null;
@@ -690,7 +690,7 @@ function render() {
   const seen = new Set();
   items.forEach((it, idx) => {
     seen.add(it.id);
-    // la clave decide si hace falta redibujar (evita parpadeos)
+    // the key decides whether a redraw is needed (avoids flicker)
     const key = JSON.stringify([it.status, it.hasThumb, it.thumbVer, it.error, it.meta && it.meta.id,
       it.notice, it.progress >= 1, (it.dates || []).length]);
     let el = cardEls.get(it.id);
@@ -748,7 +748,7 @@ $('#dlAllBtn').onclick = async () => {
   refresh();
 };
 
-/* ---------- estado ---------- */
+/* ---------- state ---------- */
 const prevStatus = new Map();
 async function refresh() {
   try {
@@ -769,7 +769,7 @@ setInterval(refresh, 600);
 setInterval(() => api('/api/ping', {}).catch(() => {}), 4000);
 api('/api/ping', {});
 
-/* ---------- visor 360 (WebGL) ---------- */
+/* ---------- 360 viewer (WebGL) ---------- */
 const V = { yaw: 0, pitch: 0, fov: 85, gl: null, tex: null, prog: null, raf: 0 };
 function initGL() {
   const c = $('#glc');
@@ -778,7 +778,7 @@ function initGL() {
   const vs = `attribute vec2 p; void main(){ gl_Position = vec4(p,0.,1.); }`;
   const fs = `precision highp float;
     uniform sampler2D t; uniform vec2 res; uniform float yaw, pitch, fov;
-    uniform vec3 R0, R1, R2;   // nivelado: corrige la inclinación de la cámara
+    uniform vec3 R0, R1, R2;   // levelling: corrects the camera's tilt
     void main(){
       vec2 uv = (gl_FragCoord.xy / res) * 2. - 1.;
       float f = tan(radians(fov) * .5);
@@ -843,7 +843,7 @@ function openViewer(it, crop = false) {
     $('#viewer').classList.add('show');
     setCrop(crop);
     requestAnimationFrame(draw);
-    // luego, una versión más nítida (4096 px) para mirar de cerca y encuadrar
+    // then a sharper version (4096 px) to look closely and frame
     const hi = new Image();
     hi.onload = () => { if (seq === V.seq) { upload(hi); requestAnimationFrame(draw); } };
     hi.src = `/api/view/${it.id}?v=${it.thumbVer}`;
@@ -861,7 +861,7 @@ function openPhoto(it) {
 $('#lightbox').onclick = () => $('#lightbox').classList.remove('show');
 function closeViewer() { $('#viewer').classList.remove('show', 'crop'); V.crop = false; V.seq++; }
 
-/* ---------- recorte ---------- */
+/* ---------- crop ---------- */
 V.aspect = 1.5; V.crops = [];
 function setCrop(on) {
   V.crop = on;
@@ -873,7 +873,7 @@ function setCrop(on) {
 function frameGeom() {
   const c = $('#glc'), vw = c.clientWidth || innerWidth, vh = c.clientHeight || innerHeight;
   const fh = Math.min(vh * 0.68, vw * 0.86 / V.aspect), fw = fh * V.aspect;
-  // campo vertical del marco: misma proyección que el visor
+  // vertical field of the frame: the same projection as the viewer
   const fov = 2 * Math.atan((fh / vh) * Math.tan(V.fov * Math.PI / 360)) * 180 / Math.PI;
   return { fw, fh, fov };
 }
@@ -1056,7 +1056,7 @@ function renderHdriJob() {
   c.addEventListener('pointerup', () => drag = null);
   c.addEventListener('wheel', e => {
     e.preventDefault();
-    // en modo recorte se puede acercar mucho más (teleobjetivo)
+    // in crop mode it can zoom in much further (telephoto)
     V.fov = Math.max(V.crop ? 6 : 30, Math.min(110, V.fov * Math.exp(e.deltaY * 0.0012)));
     layoutFrame();
     requestAnimationFrame(draw);
