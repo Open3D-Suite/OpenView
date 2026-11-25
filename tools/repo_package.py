@@ -201,7 +201,7 @@ def cargo_command(args, target):
     libraries that is cargo's home, inside the user's folder. Those paths are cut down to "cargo\\..."
     and "target\\...". The flags are added with --config to the rustflags of the target in the
     repository's Cargo settings, which cargo joins with them: in an environment variable they would
-    take the place of those (such as the Visual C++ runtime linked in, D-151). Where RUSTFLAGS or
+    take the place of those (such as the Visual C++ runtime linked in). Where RUSTFLAGS or
     CARGO_ENCODED_RUSTFLAGS is set, cargo reads no rustflags from its settings, so the flags join those
     instead. A library that compiles C code writes its paths too (__FILE__), and rustc's flags do not
     reach the C compiler: MSVC is told to trim the same folders, in both spellings Windows has for

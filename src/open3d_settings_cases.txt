@@ -9,7 +9,7 @@
 # lines that start with "#" are not cases.
 #
 #   windows | LANGID | language
-#       The language of Windows (D-052): the LANGID that GetUserDefaultUILanguage gives, in
+#       The language of Windows: the LANGID that GetUserDefaultUILanguage gives, in
 #       hexadecimal, and the language shown when there is no preference.
 #   read | settings.json | LANGID | preference | language
 #       Reading a settings.json: the preference it holds (en, es, or none) and the language shown
@@ -19,11 +19,11 @@
 #       afterwards, compared as JSON: the same keys with the same values, whatever the spaces and
 #       the order of the keys.
 #   folders | app | OPEN3D_SETTINGS_DIR | APPDATA | OPEN3D_DATA_DIR | LOCALAPPDATA | settings | data
-#       The folders of an app (D-042, D-044): the folder of its settings and the folder of
+#       The folders of an app: the folder of its settings and the folder of
 #       everything else it writes, from the four variables. A variable is "(unset)", "(empty)" or
 #       its value; a folder is "(none)" or its parts, separated by "/".
 #   carry | old folder | new folder | what it does
-#       Carrying an app's old folder over to its new one (D-048, D-049): what the two hold before,
+#       Carrying an app's old folder over to its new one: what the two hold before,
 #       and what carry_over does: "nothing", or "copied N" (N files copied, nothing left out). When
 #       it copies, the new folder then holds exactly what the old one holds; otherwise it is as it
 #       was. The old folder is always left as it was, nothing else is left beside the new one, and
